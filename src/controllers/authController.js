@@ -65,7 +65,7 @@ const login = async (req, res) => {
       // Restaurant admin login - check Restaurant model directly
       const restaurant = await Restaurant.findOne({ 
         slug: restaurantSlug, 
-        adminEmail: email,
+        email: email,
         isActive: true 
       });
       
@@ -81,8 +81,8 @@ const login = async (req, res) => {
       
       user = {
         _id: restaurant._id,
-        email: restaurant.adminEmail,
-        name: restaurant.adminName
+        email: restaurant.email,
+        name: restaurant.ownerName
       };
     } else {
       // Try Super admin login first

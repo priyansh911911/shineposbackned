@@ -1,122 +1,131 @@
-const Subscription = require("../models/Subscription");
-const Restaurant = require("../models/Restaurant");
+const Restaurant = require('../models/Restaurant');
 
-//CREATE TRIAL (on restaurant signup)
-
-exports.createTrialSubscription = async (req, res) => {
+const getAllSubscriptions = async (req, res) => {
   try {
-    const { restaurantId } = req.body;
-
-    const existing = await Subscription.findOne({ restaurantId });
-    if (existing) {
-      return res.status(400).json({
-        error: "Subscription already exists"
-      });
-    }
-
-    const subscription = await Subscription.create({
-      restaurantId,
-      plan: "trial",
-      price: 0
+    const restaurants = await Restaurant.find().sort({ createdAt: -1 });
+    
+    const subscriptions = restaurants.map(restaurant => {
+      const now = new Date();
+      const isExpired = restaurant.subscriptionEndDate && new Date(restaurant.subscriptionEndDate) < now;
+      const daysRemaining = restaurant.subscriptionEndDate 
+        ? Math.ceil((new Date(restaurant.subscriptionEndDate) - now) / (1000 * 60 * 60 * 24))
+        : null;
+      
+      return {
+        _id: restaurant._id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        subscriptionStartDate: restaurant.subscriptionStartDate,
+        subscriptionEndDate: restaurant.subscriptionEndDate,
+        daysRemaining,
+        isExpired,
+        status: restaurant.subscriptionPlan || 'trial'
+      };
     });
-
-    await Restaurant.findByIdAndUpdate(restaurantId, {
-      subscriptionPlan: "trial"
-    });
-
-    res.status(201).json({
-      message: "14-day trial activated",
-      subscription
-    });
+    
+    res.json({ subscriptions });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get subscriptions error:', error);
+    res.status(500).json({ error: 'Failed to fetch subscriptions' });
   }
 };
-/**
- * GET SUBSCRIPTION (used by frontend to decide payment popup)
- */
-exports.getRestaurantSubscription = async (req, res) => {
+
+const extendSubscription = async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    const { days } = req.body;
 
-    const subscription = await Subscription.findOne({ restaurantId });
-
-    if (!subscription) {
-      return res.status(404).json({ error: "Subscription not found" });
+    if (!days || days <= 0) {
+      return res.status(400).json({ error: 'Invalid number of days' });
     }
 
-    // Force expiry check
-    if (subscription.endDate < new Date()) {
-      subscription.status = "expired";
-      await subscription.save();
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    res.json({
-      subscription,
-      showPayment: subscription.status === "expired"
-    });
+    const now = new Date();
+    const currentEndDate = restaurant.subscriptionEndDate ? new Date(restaurant.subscriptionEndDate) : now;
+    const baseDate = currentEndDate > now ? currentEndDate : now;
+    const newEndDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+    restaurant.subscriptionEndDate = newEndDate;
+    if (!restaurant.subscriptionStartDate) {
+      restaurant.subscriptionStartDate = now;
+    }
+    
+    await restaurant.save();
+
+    res.json({ message: 'Subscription extended successfully', restaurant });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-/**
- * ACTIVATE PAID SUBSCRIPTION (after payment success)
- */
-exports.activateSubscription = async (req, res) => {
-  try {
-    const { restaurantId } = req.body;
-
-    const subscription = await Subscription.findOne({ restaurantId });
-    if (!subscription || subscription.status !== "expired") {
-      return res.status(400).json({
-        error: "Subscription is not eligible for activation"
-      });
-    }
-
-    subscription.plan = "subscription";
-    subscription.price = 1499; // fixed price
-    subscription.status = "active";
-    subscription.startDate = new Date();
-    subscription.endDate = null; // recalculated by model
-
-    await subscription.save();
-
-    await Restaurant.findByIdAndUpdate(restaurantId, {
-      subscriptionPlan: "subscription"
-    });
-
-    res.json({
-      message: "Subscription activated for 30 days",
-      subscription
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Extend subscription error:', error);
+    res.status(500).json({ error: 'Failed to extend subscription' });
   }
 };
 
-
-/**
- * CANCEL SUBSCRIPTION
- */
-exports.cancelSubscription = async (req, res) => {
+const convertToSubscription = async (req, res) => {
   try {
     const { restaurantId } = req.params;
-
-    const subscription = await Subscription.findOne({ restaurantId });
-    if (!subscription) {
-      return res.status(404).json({ error: "Subscription not found" });
+    const restaurant = await Restaurant.findById(restaurantId);
+    
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    subscription.status = "expired";
-    await subscription.save();
+    const now = new Date();
+    const newEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    restaurant.subscriptionPlan = 'subscription';
+    restaurant.subscriptionStartDate = now;
+    restaurant.subscriptionEndDate = newEndDate;
+    
+    await restaurant.save();
+
+    res.json({ message: 'Converted to 30-day subscription successfully', restaurant });
+  } catch (error) {
+    console.error('Convert to subscription error:', error);
+    res.status(500).json({ error: 'Failed to convert to subscription' });
+  }
+};
+
+const getRestaurantSubscription = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant = await Restaurant.findById(restaurantId);
+    
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    const now = new Date();
+    const isExpired = restaurant.subscriptionEndDate && new Date(restaurant.subscriptionEndDate) < now;
+    const daysRemaining = restaurant.subscriptionEndDate 
+      ? Math.ceil((new Date(restaurant.subscriptionEndDate) - now) / (1000 * 60 * 60 * 24))
+      : null;
 
     res.json({
-      message: "Subscription cancelled",
-      subscription
+      subscription: {
+        restaurantId: restaurant._id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        subscriptionStartDate: restaurant.subscriptionStartDate,
+        subscriptionEndDate: restaurant.subscriptionEndDate,
+        daysRemaining,
+        isExpired,
+        status: isExpired ? 'expired' : 'active'
+      }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get restaurant subscription error:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription' });
   }
+};
+
+module.exports = {
+  getAllSubscriptions,
+  extendSubscription,
+  convertToSubscription,
+  getRestaurantSubscription
 };
 
 // const Subscription = require('../models/Subscription');

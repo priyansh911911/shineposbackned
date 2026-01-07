@@ -1,58 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const Subscription = require('../models/Subscription');
+const Restaurant = require('../models/Restaurant');
+const auth = require('../middleware/auth');
 
-// GET /api/subscriptions/:restaurantId - Get subscription by restaurant
-router.get('/:restaurantId', async (req, res) => {
+router.get('/status', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']), async (req, res) => {
   try {
-    const subscription = await Subscription.findOne({ restaurantId: req.params.restaurantId });
-    if (!subscription) {
-      return res.status(404).json({ message: 'Subscription not found' });
+    const restaurant = await Restaurant.findOne({ slug: req.user.restaurantSlug });
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant not found' });
     }
-    res.json(subscription);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
 
-// POST /api/subscriptions - Create subscription
-router.post('/', async (req, res) => {
-  try {
-    const subscription = new Subscription(req.body);
-    await subscription.save();
-    res.status(201).json(subscription);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+    const now = new Date();
+    const isExpired = restaurant.subscriptionEndDate && new Date(restaurant.subscriptionEndDate) < now;
+    const daysRemaining = restaurant.subscriptionEndDate 
+      ? Math.ceil((new Date(restaurant.subscriptionEndDate) - now) / (1000 * 60 * 60 * 24))
+      : null;
 
-// PUT /api/subscriptions/:restaurantId - Update subscription
-router.put('/:restaurantId', async (req, res) => {
-  try {
-    const subscription = await Subscription.findOneAndUpdate(
-      { restaurantId: req.params.restaurantId },
-      req.body,
-      { new: true }
-    );
-    if (!subscription) {
-      return res.status(404).json({ message: 'Subscription not found' });
-    }
-    res.json(subscription);
+    res.json({
+      plan: restaurant.subscriptionPlan,
+      subscriptionStartDate: restaurant.subscriptionStartDate,
+      subscriptionEndDate: restaurant.subscriptionEndDate,
+      daysRemaining,
+      isExpired
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// DELETE /api/subscriptions/:restaurantId - Delete subscription
-router.delete('/:restaurantId', async (req, res) => {
-  try {
-    const subscription = await Subscription.findOneAndDelete({ restaurantId: req.params.restaurantId });
-    if (!subscription) {
-      return res.status(404).json({ message: 'Subscription not found' });
-    }
-    res.json({ message: 'Subscription deleted' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get subscription status error:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription status' });
   }
 });
 

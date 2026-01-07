@@ -12,48 +12,50 @@ const createRestaurant = async (req, res) => {
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    const { name, slug, adminEmail, adminPassword, adminName, phone, address, city, state, zipCode, cuisine, description } = req.body;
+    const { name, adminName, adminEmail, adminPassword, phone, slug, restaurantPhone, pinCode, city, state, address, hasPaid } = req.body;
     
-    // Check if restaurant already exists
     const existingRestaurant = await Restaurant.findOne({ 
-      $or: [{ adminEmail }, { slug }] 
+      $or: [{ email: adminEmail }, { slug }] 
     });
     if (existingRestaurant) {
-      const field = existingRestaurant.adminEmail === adminEmail ? 'email' : 'slug';
+      const field = existingRestaurant.email === adminEmail ? 'email' : 'slug';
       return res.status(400).json({ error: `Restaurant with this ${field} already exists` });
     }
 
-    // Hash admin password
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    const now = new Date();
+    const days = hasPaid ? 30 : 14;
+    const endDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
-    // Create restaurant
     const restaurant = new Restaurant({ 
-      name,
+      restaurantName: name,
+      ownerName: adminName,
       slug: slug.toLowerCase().trim(),
-      adminEmail, 
+      email: adminEmail, 
       password: hashedPassword,
-      adminName,
       phone,
+      restaurantPhone,
       address,
       city,
       state,
-      zipCode,
-      cuisine,
-      description,
-      subscriptionPlan: 'trial'
+      pinCode,
+      subscriptionPlan: hasPaid ? 'subscription' : 'trial',
+      subscriptionStartDate: now,
+      subscriptionEndDate: endDate
     });
     
     await restaurant.save();
 
     res.status(201).json({
-      message: 'Restaurant registered successfully',
+      message: `Restaurant registered successfully with ${hasPaid ? '30-day subscription' : '14-day trial'}`,
       restaurant: {
         id: restaurant._id,
-        name: restaurant.name,
+        restaurantName: restaurant.restaurantName,
+        ownerName: restaurant.ownerName,
         slug: restaurant.slug,
-        adminEmail: restaurant.adminEmail,
-        adminName: restaurant.adminName,
+        email: restaurant.email,
         subscriptionPlan: restaurant.subscriptionPlan,
+        subscriptionEndDate: restaurant.subscriptionEndDate,
         isActive: restaurant.isActive
       }
     });
@@ -92,7 +94,7 @@ const getRestaurantAnalytics = async (req, res) => {
           
           return {
             restaurantId: restaurant._id,
-            name: restaurant.name,
+            restaurantName: restaurant.restaurantName,
             slug: restaurant.slug,
             isActive: restaurant.isActive,
             totalOrders,
@@ -102,7 +104,7 @@ const getRestaurantAnalytics = async (req, res) => {
         } catch {
           return {
             restaurantId: restaurant._id,
-            name: restaurant.name,
+            restaurantName: restaurant.restaurantName,
             slug: restaurant.slug,
             isActive: restaurant.isActive,
             totalOrders: 0,
@@ -123,10 +125,10 @@ const getRestaurantAnalytics = async (req, res) => {
 const updateRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, slug } = req.body;
+    const { restaurantName, slug } = req.body;
     
     const updateData = {};
-    if (name) updateData.name = name;
+    if (restaurantName) updateData.restaurantName = restaurantName;
     if (slug) {
       const slugValue = slug.toLowerCase().trim();
       const existingRestaurant = await Restaurant.findOne({ 
@@ -185,7 +187,7 @@ const toggleRestaurantStatus = async (req, res) => {
       message: `Restaurant ${restaurant.isActive ? 'enabled' : 'disabled'} successfully`,
       restaurant: {
         id: restaurant._id,
-        name: restaurant.name,
+        restaurantName: restaurant.restaurantName,
         slug: restaurant.slug,
         isActive: restaurant.isActive
       }

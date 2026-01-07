@@ -9,8 +9,10 @@ const router = express.Router();
 router.post('/', 
   [
     body('name').trim().isLength({ min: 2 }).withMessage('Restaurant name is required'),
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('adminName').trim().isLength({ min: 2 }).withMessage('Owner name is required'),
+    body('adminEmail').isEmail().withMessage('Valid email is required'),
+    body('adminPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('slug').trim().isLength({ min: 2 }).withMessage('Restaurant slug is required'),
     body('phone').trim().isLength({ min: 10 }).withMessage('Phone number is required'),
     body('restaurantPhone').trim().isLength({ min: 10 }).withMessage('Restaurant phone number is required'),
     body('pinCode').trim().isLength({ min: 5 }).withMessage('Pin code is required'),

@@ -15,10 +15,10 @@ const kitchenRoutes = require('./routes/kitchen');
 const systemRoutes = require('./routes/system');
 const analyticsRoutes = require('./routes/analytics');
 const subscriptionRoutes = require('./routes/subscriptions');
+const subscriptionStatusRoutes = require('./routes/subscription');
 const settingsRoutes = require('./routes/settings');
 const communicationRoutes = require('./routes/communication');
 const userManagementRoutes = require('./routes/userManagement');
-const billingRoutes = require('./routes/billing');
 const paymentRoutes = require('./routes/payment');
 const { trackApiMetrics } = require('./controllers/systemController');
 
@@ -53,10 +53,10 @@ app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/subscription', subscriptionStatusRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/user-management', userManagementRoutes);
-app.use('/api/billing', billingRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/:restaurantSlug/orders', (req, res, next) => {
   console.log('Hit parameterized route with slug:', req.params.restaurantSlug);

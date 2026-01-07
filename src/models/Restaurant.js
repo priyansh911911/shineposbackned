@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 
 const restaurantSchema = new mongoose.Schema({
-  name: {
+  restaurantName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  ownerName: {
     type: String,
     required: true,
     trim: true
@@ -13,7 +18,7 @@ const restaurantSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-  adminEmail: {
+  email: {
     type: String,
     required: true,
     lowercase: true,
@@ -23,22 +28,21 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  adminName: {
-    type: String,
-    required: true
-  },
   phone: String,
+  restaurantPhone: String,
   address: String,
   city: String,
   state: String,
-  zipCode: String,
+  pinCode: String,
   cuisine: String,
   description: String,
   subscriptionPlan: {
     type: String,
-    enum: ['trial', 'basic', 'premium', 'enterprise'],
+    enum: ['trial', 'subscription'],
     default: 'trial'
   },
+  subscriptionStartDate: Date,
+  subscriptionEndDate: Date,
   isActive: {
     type: Boolean,
     default: true
