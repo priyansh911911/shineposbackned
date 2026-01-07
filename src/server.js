@@ -43,8 +43,6 @@ app.use(cors({
 app.use(express.json());
 app.use(trackApiMetrics); // Track API metrics for monitoring
 
-
-
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);

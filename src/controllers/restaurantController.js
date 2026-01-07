@@ -199,7 +199,7 @@ const toggleRestaurantStatus = async (req, res) => {
 module.exports = {
   createRestaurant,
   getRestaurants,
-  getRestaurantAnalytics,
+  getRestaurantAnalytics,                                                                                                                                              
   updateRestaurant,
   deleteRestaurant,
   toggleRestaurantStatus
