@@ -38,6 +38,7 @@ app.use(cors({
     "http://localhost:5173",
     "http://localhost:5000",
     "https://shineposbackned.vercel.app",
+    "https://shinepos.vercel.app",
   
   ]
 }));
