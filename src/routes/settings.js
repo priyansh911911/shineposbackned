@@ -11,9 +11,9 @@ router.use(auth(['SUPER_ADMIN']));
 router.get('/all', getSettings);
 
 // Update setting
-router.put('/', updateSetting);
+router.put('/update/setting', updateSetting);
 
 // Delete setting
-router.delete('/:key', deleteSetting);
+router.delete('/delete/:key', deleteSetting);
 
 module.exports = router;

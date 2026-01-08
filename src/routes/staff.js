@@ -14,10 +14,10 @@ const { trackUsage } = require('../middleware/subscription');
 const router = express.Router();
 
 // Get all staff
-router.get('/', auth(['RESTAURANT_ADMIN', 'MANAGER']), tenantMiddleware, getStaff);
+router.get('/all/staff', auth(['RESTAURANT_ADMIN', 'MANAGER']), tenantMiddleware, getStaff);
 
 // Create staff
-router.post('/', 
+router.post('/add/staff', 
   auth(['RESTAURANT_ADMIN']),
   trackUsage, // Check user limits
   tenantMiddleware,
@@ -31,10 +31,10 @@ router.post('/',
 );
 
 // Update staff
-router.put('/:id', auth(['RESTAURANT_ADMIN', 'MANAGER']), tenantMiddleware, updateStaff);
+router.put('/update/staff/:id', auth(['RESTAURANT_ADMIN', 'MANAGER']), tenantMiddleware, updateStaff);
 
 // Schedule shift
-router.post('/:id/shifts', 
+router.post('/add/:id/shifts', 
   auth(['RESTAURANT_ADMIN', 'MANAGER']), 
   tenantMiddleware,
   [
@@ -46,7 +46,7 @@ router.post('/:id/shifts',
 );
 
 // Update performance
-router.patch('/:id/performance', 
+router.patch('/update/performance/:id', 
   auth(['RESTAURANT_ADMIN', 'MANAGER']), 
   tenantMiddleware,
   updatePerformance

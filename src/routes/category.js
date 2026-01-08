@@ -13,7 +13,7 @@ const router = express.Router();
 
 // Create Category
 router.post(
-    '/add',
+    '/add/Category',
     auth(['RESTAURANT_ADMIN']),
     tenantMiddleware,
     [
@@ -23,12 +23,12 @@ router.post(
 );
 
 // Get all categories
-router.get('/all', auth(['RESTAURANT_ADMIN']), tenantMiddleware, getCategories);
+router.get('/all/categories', auth(['RESTAURANT_ADMIN']), tenantMiddleware, getCategories);
 
 // Update category
-router.put('/update/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, updateCategory);
+router.put('/update/category/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, updateCategory);
 
 // Delete category
-router.delete('/delete/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, deleteCategory);
+router.delete('/delete/category/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, deleteCategory);
 
 module.exports = router;

@@ -10,7 +10,7 @@ const router = express.Router();
 router.use(auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']));
 
 // Create menu item
-router.post('/',
+router.post('/add/menu',
   trackUsage, // Check subscription limits
   [
     body('name').trim().isLength({ min: 2 }).withMessage('Menu name must be at least 2 characters'),
@@ -21,12 +21,12 @@ router.post('/',
 );
 
 // Get all menu items
-router.get('/all', getMenus);
+router.get('/all/menu', getMenus);
 
 // Update menu item
-router.put('/:id', updateMenu);
+router.put('/update/menu/:id', updateMenu);
 
 // Delete menu item
-router.delete('/:id', deleteMenu);
+router.delete('/delete/menu/:id', deleteMenu);
 
 module.exports = router;

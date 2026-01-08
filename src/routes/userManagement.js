@@ -12,7 +12,7 @@ router.use(auth(['SUPER_ADMIN']));
 router.get('/', getAllUsers);
 
 // Get users for specific restaurant
-router.get('/restaurants/:restaurantId/users', getRestaurantUsers);
+router.get('/all/restaurants/users/:restaurantId/users', getRestaurantUsers);
 
 // Create user for restaurant
 router.post('/restaurants/:restaurantId/users', [
@@ -23,9 +23,9 @@ router.post('/restaurants/:restaurantId/users', [
 ], createUser);
 
 // Update user
-router.put('/restaurants/:restaurantId/users/:userId', updateUser);
+router.put('/update/restaurants/users/:restaurantId/:userId', updateUser);
 
 // Delete user
-router.delete('/restaurants/:restaurantId/users/:userId', deleteUser);
+router.delete('/delete/restaurants/users/:restaurantId/:userId', deleteUser);
 
 module.exports = router;

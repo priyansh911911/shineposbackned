@@ -3,7 +3,7 @@
 // const TenantModelFactory = require('../models/TenantModelFactory');
 // const auth = require('../middleware/auth');
 
-// // Process payment for an order
+// Process payment for an order
 // router.post('/orders/:orderId/payments', auth(['CASHIER', 'RESTAURANT_ADMIN', 'MANAGER']), async (req, res) => {
 //   try {
 //     const { orderId } = req.params;

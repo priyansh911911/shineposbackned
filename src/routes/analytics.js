@@ -5,9 +5,9 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 // Get advanced analytics
-router.get('/advanced', auth(['SUPER_ADMIN']), getAdvancedAnalytics);
+router.get('/all/advanced/analytics', auth(['SUPER_ADMIN']), getAdvancedAnalytics);
 
 // Export reports
-router.post('/reports/export', auth(['SUPER_ADMIN']), exportReport);
+router.post('/add/reports/export', auth(['SUPER_ADMIN']), exportReport);
 
 module.exports = router;

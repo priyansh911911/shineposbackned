@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 // Create order for authenticated staff
-router.post('/',
+router.post('/add/staff',
   auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']),
   [
     body('items').isArray({ min: 1 }).withMessage('Items are required'),
@@ -20,9 +20,9 @@ router.post('/',
 router.use(auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']));
 
 // Get all orders
-router.get('/', getOrders);
+router.get('/all/orders', getOrders);
 
 // Update order status
-router.patch('/:id/status', updateOrderStatus);
+router.patch('/update/status/:id', updateOrderStatus);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const router = express.Router();
 const Restaurant = require('../models/Restaurant');
 const auth = require('../middleware/auth');
 
-router.get('/status', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']), async (req, res) => {
+router.get('/all/status', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER', 'CASHIER']), async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({ slug: req.user.restaurantSlug });
     if (!restaurant) {

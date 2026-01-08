@@ -5,9 +5,9 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 // Get current system health
-router.get('/health', auth(['SUPER_ADMIN']), getSystemHealth);
+router.get('/all/system/health', auth(['SUPER_ADMIN']), getSystemHealth);
 
 // Get health history
-router.get('/health/history', auth(['SUPER_ADMIN']), getHealthHistory);
+router.get('/all/health/history', auth(['SUPER_ADMIN']), getHealthHistory);
 
 module.exports = router;

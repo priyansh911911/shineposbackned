@@ -13,13 +13,13 @@ const tenantMiddleware = require('../middleware/tenant');
 const router = express.Router();
 
 // Get all inventory items
-router.get('/all', auth(['RESTAURANT_ADMIN', 'STAFF']), tenantMiddleware, getInventory);
+router.get('/all/inventory/items', auth(['RESTAURANT_ADMIN', 'STAFF']), tenantMiddleware, getInventory);
 
 // Get low stock items
-router.get('/low-stock', auth(['RESTAURANT_ADMIN', 'STAFF']), tenantMiddleware, getLowStockItems);
+router.get('/all/low-stock', auth(['RESTAURANT_ADMIN', 'STAFF']), tenantMiddleware, getLowStockItems);
 
 // Create inventory item
-router.post('/', 
+router.post('/add', 
   auth(['RESTAURANT_ADMIN']),
   tenantMiddleware,
   [
@@ -34,10 +34,10 @@ router.post('/',
 );
 
 // Update inventory item
-router.put('/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, updateInventoryItem);
+router.put('/update/item/:id', auth(['RESTAURANT_ADMIN']), tenantMiddleware, updateInventoryItem);
 
 // Restock item
-router.patch('/:id/restock', 
+router.patch('/update/restock/:id', 
   auth(['RESTAURANT_ADMIN', 'STAFF']), 
   tenantMiddleware,
   [

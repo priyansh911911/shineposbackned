@@ -10,12 +10,12 @@ const tenantMiddleware = require('../middleware/tenant');
 const router = express.Router();
 
 // Get kitchen orders
-router.get('/orders', auth(['KITCHEN_STAFF', 'MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, getKitchenOrders);
+router.get('/all/kitchen/orders', auth(['KITCHEN_STAFF', 'MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, getKitchenOrders);
 
 // Update order status
-router.patch('/orders/:id/status', auth(['KITCHEN_STAFF', 'MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, updateOrderStatus);
+router.patch('/update/orders/status/:id', auth(['KITCHEN_STAFF', 'MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, updateOrderStatus);
 
 // Set order priority
-router.patch('/orders/:id/priority', auth(['MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, setPriority);
+router.patch('/update/orders/priority/:id', auth(['MANAGER', 'RESTAURANT_ADMIN']), tenantMiddleware, setPriority);
 
 module.exports = router;
