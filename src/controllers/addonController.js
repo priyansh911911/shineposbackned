@@ -1,6 +1,6 @@
 const createAddon = async (req, res) => {
     try {
-        const { name, price, description, category, veg, available } = req.body;
+        const { name, price, description, veg, available } = req.body;
         const Addon = req.tenantModels.Addon;
         
         const existingAddon = await Addon.findOne({ name });
@@ -8,7 +8,7 @@ const createAddon = async (req, res) => {
             return res.status(400).json({ error: 'Addon already exists' });
         }
 
-        const addon = new Addon({ name, price, description, category, veg, available });
+        const addon = new Addon({ name, price, description, veg, available });
         await addon.save();
         
         res.status(201).json({ message: 'Addon created successfully', addon });
@@ -49,12 +49,12 @@ const getAddonById = async (req, res) => {
 const updateAddon = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, price, description, category, veg, available } = req.body;
+        const { name, price, description, veg, available } = req.body;
         const Addon = req.tenantModels.Addon;
         
         const addon = await Addon.findByIdAndUpdate(
             id,
-            { name, price, description, category, veg, available },
+            { name, price, description, veg, available },
             { new: true }
         );
         

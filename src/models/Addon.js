@@ -12,10 +12,6 @@ const addonSchema = new mongoose.Schema({
   description: {
     type: String
   },
-  category: {
-    type: String,
-    default: 'general'
-  },
   veg: {
     type: Boolean,
     default: true
