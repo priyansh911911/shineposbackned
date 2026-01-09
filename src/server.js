@@ -8,8 +8,6 @@ const connectDB = require('./utils/database');
 const authRoutes = require('./routes/auth');
 const restaurantRoutes = require('./routes/restaurants');
 const menuRoutes = require('./routes/menuItems');
-console.log('menuRoutes type:', typeof menuRoutes);
-console.log('menuRoutes:', menuRoutes);
 const orderRoutes = require('./routes/orders');
 const inventoryRoutes = require('./routes/inventory');
 const staffRoutes = require('./routes/staff');
@@ -62,14 +60,8 @@ app.use('/api/communication', communicationRoutes);
 app.use('/api/user-management', userManagementRoutes);
 app.use('/api/categories', categoryRoutes);
 // app.use('/api/payment', paymentRoutes);
-app.use('/api/:restaurantSlug/orders', (req, res, next) => {
-  console.log('Hit parameterized route with slug:', req.params.restaurantSlug);
-  next();
-}, orderRoutes);
-app.use('/api/orders', (req, res, next) => {
-  console.log('Hit regular orders route');
-  next();
-}, orderRoutes);
+app.use('/api/:restaurantSlug/orders', orderRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -87,7 +79,6 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use('*', (req, res) => {
-  console.log('404 - Route not found:', req.method, req.originalUrl);
   res.status(404).json({ 
     error: 'Route not found',
     method: req.method,
@@ -98,5 +89,4 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('TimeBasedSubscriptionService module error - FIXED');
 });

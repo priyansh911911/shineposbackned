@@ -4,10 +4,6 @@ const Restaurant = require('../models/Restaurant');
 
 const createOrder = async (req, res) => {
   try {
-    console.log('Order request:', req.body);
-    console.log('Restaurant slug from params:', req.params.restaurantSlug);
-    console.log('Original URL:', req.originalUrl);
-    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -24,8 +20,6 @@ const createOrder = async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Restaurant slug not found' });
     }
-    
-    console.log('Final restaurant slug:', restaurantSlug);
 
     const { items, customerName, customerPhone } = req.body;
 
