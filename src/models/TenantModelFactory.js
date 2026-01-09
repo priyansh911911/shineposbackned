@@ -327,7 +327,7 @@ class TenantModelFactory {
         videoUrl: { type: String, trim: true },
         timeToPrepare: { type: Number, required: true, min: 1 },
         foodType: { type: String, enum: ['veg', 'nonveg'], required: true },
-        price: { type: Number, required: true, min: 0 },
+        variation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'variations' }],
         addon: [{ type: mongoose.Schema.Types.ObjectId, ref: 'addons' }]
       }, { timestamps: true });
       this.models.set(modelKey, connection.model('menuitems', menuItemSchema));
