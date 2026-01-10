@@ -1,7 +1,10 @@
-const { validationResult } = require('express-validator');
-const TenantModelFactory = require('../models/TenantModelFactory');
-const Restaurant = require('../models/Restaurant');
+const { validationResult } = require("express-validator");
+const TenantModelFactory = require("../models/TenantModelFactory");
+const Restaurant = require("../models/Restaurant");
 
+/* =====================================================
+   CREATE ORDER
+===================================================== */
 const createOrder = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -9,142 +12,264 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    let restaurantSlug;
-    
-    // Check if slug is in URL params (public route: /api/:restaurantSlug/orders)
-    if (req.params.restaurantSlug) {
-      restaurantSlug = req.params.restaurantSlug;
-    } else if (req.user && req.user.restaurantSlug) {
-      // For authenticated routes, get slug from user's restaurant
-      restaurantSlug = req.user.restaurantSlug;
-    } else {
-      return res.status(400).json({ error: 'Restaurant slug not found' });
+    const restaurantSlug =
+      req.params.restaurantSlug || req.user?.restaurantSlug;
+
+    if (!restaurantSlug) {
+      return res.status(400).json({ error: "Restaurant slug not found" });
     }
 
     const { items, customerName, customerPhone } = req.body;
 
-    if (!restaurantSlug) {
-      return res.status(400).json({ error: 'Restaurant slug is required' });
+    if (!items || !items.length) {
+      return res.status(400).json({ error: "Items are required" });
     }
 
-    // Check restaurant status
     const restaurant = await Restaurant.findOne({ slug: restaurantSlug });
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ error: "Restaurant not found" });
     }
 
     if (!restaurant.isActive) {
-      return res.status(403).json({ error: 'Restaurant is temporarily not accepting orders' });
+      return res.status(403).json({
+        error: "Restaurant is temporarily not accepting orders",
+      });
     }
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: 'Items are required' });
-    }
+    const MenuModel =
+      req.tenantModels?.Menu ||
+      TenantModelFactory.getMenuModel(restaurantSlug);
 
-    try {
-      const MenuModel = req.tenantModels?.Menu || TenantModelFactory.getMenuModel(restaurantSlug);
+    let totalAmount = 0;
+    const orderItems = [];
 
-      // Validate menu items and calculate total
-      let totalAmount = 0;
-      const orderItems = [];
+    for (const item of items) {
+      const { menuId, quantity, variation, addons } = item;
 
-      for (const item of items) {
-        if (!item.menuId || !item.quantity) {
-          return res.status(400).json({ error: 'Invalid item format' });
-        }
-
-        const menuItem = await MenuModel.findById(item.menuId);
-        if (!menuItem) {
-          return res.status(400).json({ error: `Menu item ${item.menuId} not found` });
-        }
-        
-        if (!menuItem.isAvailable) {
-          return res.status(400).json({ error: `Menu item ${menuItem.name} is not available` });
-        }
-        
-        const itemTotal = menuItem.price * item.quantity;
-        totalAmount += itemTotal;
-        
-        orderItems.push({
-          menuId: menuItem._id,
-          name: menuItem.name,
-          price: menuItem.price,
-          quantity: item.quantity
-        });
+      if (!menuId || !quantity) {
+        return res.status(400).json({ error: "Invalid item data" });
       }
 
-      // Generate order number
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      const menuItem = await MenuModel.findById(menuId);
+      if (!menuItem || !menuItem.isAvailable) {
+        return res
+          .status(400)
+          .json({ error: "Menu item not available" });
+      }
 
-      const OrderModel = req.tenantModels?.Order || TenantModelFactory.getOrderModel(restaurantSlug);
-      const order = new OrderModel({
-        orderNumber,
-        items: orderItems,
-        totalAmount,
-        customerName,
-        customerPhone: customerPhone || ''
-      });
+      /* ===============================
+         PRICE CALCULATION (SAFE)
+      ================================ */
+      const basePrice = menuItem.price;
 
-      await order.save();
+      // Validate variation
+      let finalVariation = null;
+      let variationPrice = 0;
 
-      res.status(201).json({
-        message: 'Order created successfully',
-        order: {
-          id: order._id,
-          orderNumber: order.orderNumber,
-          items: order.items,
-          totalAmount: order.totalAmount,
-          status: order.status,
-          customerName: order.customerName,
-          createdAt: order.createdAt
+      if (variation && menuItem.variations?.length) {
+        const validVariation = menuItem.variations.find(
+          (v) => v._id.toString() === variation.variationId?.toString()
+        );
+
+        if (validVariation) {
+          variationPrice = validVariation.price;
+          finalVariation = {
+            variationId: validVariation._id,
+            name: validVariation.name,
+            price: validVariation.price,
+          };
         }
+      }
+
+      // Validate addons
+      let addonsTotal = 0;
+      const finalAddons = [];
+
+      if (addons && addons.length && menuItem.addons?.length) {
+        for (const addon of addons) {
+          const validAddon = menuItem.addons.find(
+            (a) => a._id.toString() === addon.addonId?.toString()
+          );
+
+          if (validAddon) {
+            addonsTotal += validAddon.price;
+            finalAddons.push({
+              addonId: validAddon._id,
+              name: validAddon.name,
+              price: validAddon.price,
+            });
+          }
+        }
+      }
+
+      const itemTotal =
+        (basePrice + variationPrice + addonsTotal) * quantity;
+
+      totalAmount += itemTotal;
+
+      orderItems.push({
+        menuId: menuItem._id,
+        name: menuItem.name,
+        basePrice,
+        quantity,
+        variation: finalVariation,
+        addons: finalAddons,
+        itemTotal,
       });
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      return res.status(500).json({ error: 'Database connection failed. Restaurant may not exist.' });
     }
+
+    const orderNumber = `ORD-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 6)
+      .toUpperCase()}`;
+
+    const OrderModel =
+      req.tenantModels?.Order ||
+      TenantModelFactory.getOrderModel(restaurantSlug);
+
+    const order = new OrderModel({
+      orderNumber,
+      items: orderItems,
+      totalAmount,
+      customerName,
+      customerPhone: customerPhone || "",
+    });
+
+    await order.save();
+
+    res.status(201).json({
+      message: "Order created successfully",
+      order,
+    });
   } catch (error) {
-    console.error('Create order error:', error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+    console.error("Create order error:", error);
+    res.status(500).json({
+      error: "Failed to create order",
+      details: error.message,
+    });
   }
 };
 
+/* =====================================================
+   GET ORDERS
+===================================================== */
 const getOrders = async (req, res) => {
   try {
-    const OrderModel = req.tenantModels?.Order || TenantModelFactory.getOrderModel(req.user.restaurantSlug);
+    if (!req.user?.restaurantSlug) {
+      return res.status(400).json({ error: "Restaurant slug not found" });
+    }
+
+    const OrderModel =
+      req.tenantModels?.Order ||
+      TenantModelFactory.getOrderModel(req.user.restaurantSlug);
+
     const orders = await OrderModel.find().sort({ createdAt: -1 });
+
     res.json({ orders });
   } catch (error) {
-    console.error('Get orders error:', error);
-    res.status(500).json({ error: 'Failed to fetch orders' });
+    console.error("Get orders error:", error);
+    res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 
+/* =====================================================
+   UPDATE ORDER STATUS
+===================================================== */
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const OrderModel = req.tenantModels?.Order || TenantModelFactory.getOrderModel(req.user.restaurantSlug);
-    
-    const order = await OrderModel.findByIdAndUpdate(
-      id, 
-      { status }, 
-      { new: true }
-    );
-    
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+
+    const allowedStatuses = [
+      "PENDING",
+      "ORDER_ACCEPTED",
+      "PREPARING",
+      "READY",
+      "SERVED",
+      "COMPLETE",
+      "CANCELLED",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid order status" });
     }
 
-    res.json({ message: 'Order status updated successfully', order });
+    const OrderModel =
+      req.tenantModels?.Order ||
+      TenantModelFactory.getOrderModel(req.user.restaurantSlug);
+
+    const order = await OrderModel.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({
+      message: "Order status updated successfully",
+      order,
+    });
   } catch (error) {
-    console.error('Update order error:', error);
-    res.status(500).json({ error: 'Failed to update order status' });
+    console.error("Update order error:", error);
+    res.status(500).json({ error: "Failed to update order status" });
   }
 };
 
+/* =====================================================
+   PROCESS PAYMENT
+===================================================== */
+const processPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { method, amount, transactionId } = req.body;
+
+    const OrderModel =
+      req.tenantModels?.Order ||
+      TenantModelFactory.getOrderModel(req.user.restaurantSlug);
+
+    const existingOrder = await OrderModel.findById(id);
+    if (!existingOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (amount !== existingOrder.totalAmount) {
+      return res
+        .status(400)
+        .json({ error: "Payment amount does not match order total" });
+    }
+
+    const order = await OrderModel.findByIdAndUpdate(
+      id,
+      {
+        paymentDetails: {
+          method,
+          amount: existingOrder.totalAmount,
+          transactionId,
+          paidAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    res.json({
+      message: "Payment processed successfully",
+      order,
+    });
+  } catch (error) {
+    console.error("Process payment error:", error);
+    res.status(500).json({ error: "Failed to process payment" });
+  }
+};
+
+/* =====================================================
+   EXPORTS
+===================================================== */
 module.exports = {
   createOrder,
   getOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  processPayment,
 };

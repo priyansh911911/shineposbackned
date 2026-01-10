@@ -5,7 +5,7 @@ const generateToken = (payload) => {
 };
 
 const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  return jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: false, clockTolerance: 60 });
 };
 
 module.exports = {

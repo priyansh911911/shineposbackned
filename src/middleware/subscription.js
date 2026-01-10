@@ -8,12 +8,12 @@ const checkSubscriptionExpiry = (restaurant) => {
 const trackUsage = async (req, res, next) => {
   try {
     if (!req.user || !req.user.restaurantSlug) {
-      return next();
+      return next(); 
     }
 
     const restaurant = await Restaurant.findOne({ slug: req.user.restaurantSlug });
     if (!restaurant) {
-      return next();
+        return next();
     }
 
     if (!restaurant.isActive) {

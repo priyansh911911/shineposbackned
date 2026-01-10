@@ -1,0 +1,123 @@
+const mongoose = require("mongoose");
+
+const OrderSchema = new mongoose.Schema(
+  {
+    orderNumber: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    items: [
+      {
+        menuId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Menu",
+          required: true,
+        },
+
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+
+        basePrice: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+        },
+
+        // VARIATION (Size, Type, etc.)
+        variation: {
+          variationId: {
+            type: mongoose.Schema.Types.ObjectId,
+          },
+          name: {
+            type: String,
+          },
+          price: {
+            type: Number,
+            min: 0,
+          },
+        },
+
+        // ADD-ONS (Cheese, Extra Toppings, etc.)
+        addons: [
+          {
+            addonId: {
+              type: mongoose.Schema.Types.ObjectId,
+            },
+            name: {
+              type: String,
+            },
+            price: {
+              type: Number,
+              min: 0,
+            },
+          },
+        ],
+
+        // FINAL ITEM PRICE
+        itemTotal: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+      },
+    ],
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "PENDING",
+        "ORDER_ACCEPTED",
+        "PREPARING",
+        "READY",
+        "SERVED",
+        "COMPLETE",
+        "CANCELLED",
+      ],
+      default: "PENDING", 
+    },
+
+    customerName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    customerPhone: {
+      type: String,
+      trim: true,
+    },
+
+    paymentDetails: {
+      method: {
+        type: String,
+        enum: ["CASH", "CARD", "UPI", "ONLINE"],
+      },
+      amount: {
+        type: Number,
+        min: 0,
+      },
+      transactionId: String,
+      paidAt: Date,
+    },
+  },
+  { timestamps: true }
+);
+//updata
+module.exports = mongoose.model("Order", OrderSchema);
