@@ -1,11 +1,27 @@
 const Restaurant = require('../models/Restaurant');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
 
-// Get all subscription plans
+const STANDARD_PLAN = {
+  name: 'standard',
+  displayName: 'Standard Plan',
+  price: 1499,
+  duration: 30,
+  features: [
+    'Unlimited orders',
+    'Unlimited staff members',
+    'Unlimited menu items',
+    'Full POS system access',
+    'Kitchen display system',
+    'Order management',
+    'Staff management',
+    'Analytics & reports',
+    'Email support'
+  ]
+};
+
+// Get subscription plan
 const getSubscriptionPlans = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find({ isActive: true });
-    res.json({ plans });
+    res.json({ plans: [STANDARD_PLAN] });
   } catch (error) {
     console.error('Get plans error:', error);
     res.status(500).json({ error: 'Failed to fetch subscription plans' });
@@ -15,29 +31,24 @@ const getSubscriptionPlans = async (req, res) => {
 // Subscribe to a plan
 const subscribeToPlan = async (req, res) => {
   try {
-    const { restaurantId, planName, paymentMethod, transactionId } = req.body;
+    const { restaurantId, paymentMethod, transactionId } = req.body;
 
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    const plan = await SubscriptionPlan.findOne({ name: planName, isActive: true });
-    if (!plan) {
-      return res.status(404).json({ error: 'Subscription plan not found' });
-    }
-
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.duration);
+    endDate.setDate(endDate.getDate() + STANDARD_PLAN.duration);
 
-    restaurant.subscriptionPlan = planName;
+    restaurant.subscriptionPlan = STANDARD_PLAN.name;
     restaurant.subscriptionStartDate = startDate;
     restaurant.subscriptionEndDate = endDate;
     restaurant.paymentStatus = 'paid';
     restaurant.paymentHistory.push({
-      planName: plan.displayName,
-      amount: plan.price,
+      planName: STANDARD_PLAN.displayName,
+      amount: STANDARD_PLAN.price,
       paymentMethod,
       transactionId,
       status: 'paid',
@@ -49,7 +60,7 @@ const subscribeToPlan = async (req, res) => {
     res.json({ 
       message: 'Subscription activated successfully',
       subscription: {
-        plan: planName,
+        plan: STANDARD_PLAN.name,
         startDate,
         endDate
       }
