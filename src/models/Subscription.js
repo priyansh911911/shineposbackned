@@ -11,8 +11,8 @@ const subscriptionSchema = new mongoose.Schema(
 
     plan: {
       type: String,
-      enum: ["trial", "subscription"],
-      default: "trial"
+      enum: ["standard"],
+      default: "standard"
     },
 
     status: {
@@ -23,7 +23,7 @@ const subscriptionSchema = new mongoose.Schema(
 
     price: {
       type: Number,
-      default: 0 // 0 for trial, >0 for subscription
+      default: 1499
     },
 
     startDate: {
@@ -42,7 +42,7 @@ const subscriptionSchema = new mongoose.Schema(
 subscriptionSchema.pre("save", function (next) {
   // Set end date automatically
   if (!this.endDate) {
-    const days = this.plan === "trial" ? 14 : 30;
+    const days = 30;
     this.endDate = new Date(
       this.startDate.getTime() + days * 24 * 60 * 60 * 1000
     );

@@ -1,6 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const { createRestaurant, getRestaurants, getRestaurantAnalytics, updateRestaurant, deleteRestaurant, toggleRestaurantStatus } = require('../controllers/restaurantController');
+const { startTrialSubscription, activateSubscriptionAfterPayment } = require('../controllers/subscriptionController');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -36,6 +37,12 @@ router.put('/update/:id', auth(['SUPER_ADMIN']), updateRestaurant);
 router.delete('/delete/:id', auth(['SUPER_ADMIN']), deleteRestaurant);
 
 // Toggle restaurant status (Super Admin only)
-router.patch('/:id/toggle-status', auth(['SUPER_ADMIN']), toggleRestaurantStatus);
+router.patch('/toggle-status/:id', auth(['SUPER_ADMIN']), toggleRestaurantStatus);
+
+// Start 14-day trial
+router.post('/restaurants/:restaurantId/start-trial', startTrialSubscription);
+
+// Activate 30-day subscription after payment
+router.post('/restaurants/:restaurantId/activate-subscription', activateSubscriptionAfterPayment);
 
 module.exports = router;

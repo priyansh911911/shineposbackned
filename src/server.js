@@ -1,8 +1,11 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 
 const connectDB = require('./utils/database');
+// Auto-save middleware
+require('./middleware/autoSave');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -16,6 +19,7 @@ const systemRoutes = require('./routes/system');
 const analyticsRoutes = require('./routes/analytics');
 const subscriptionRoutes = require('./routes/subscriptions');
 const subscriptionStatusRoutes = require('./routes/subscription');
+const subscriptionPlanRoutes = require('./routes/subscriptionPlans');
 const settingsRoutes = require('./routes/settings');
 const communicationRoutes = require('./routes/communication');
 const userManagementRoutes = require('./routes/userManagement');
@@ -23,6 +27,7 @@ const paymentRoutes = require('./routes/payment');
 const categoryRoutes = require('./routes/category');
 const addonRoutes = require('./routes/addon');
 const variationRoutes = require('./routes/variation');
+const activityLogRoutes = require('./routes/activityLog');
 const kotRoutes = require('./routes/kot');
 const systemController = require('./controllers/systemController');
 const { trackApiMetrics } = systemController;
@@ -59,12 +64,14 @@ app.use('/api/system', systemRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/subscription', subscriptionStatusRoutes);
+app.use('/api/subscription-plans', subscriptionPlanRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/user-management', userManagementRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/addon', addonRoutes);
 app.use('/api/variation', variationRoutes);
+app.use('/api/activity', activityLogRoutes);
 app.use('/api/kot', kotRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/:restaurantSlug/orders', orderRoutes);
