@@ -8,14 +8,14 @@ const checkSubscription = async (req, res, next) => {
       return next(); // Super admin can always access
     }
 
-    // Get restaurant ID from token or request
-    const restaurantSlug = req.user?.restaurantSlug;
-    if (!restaurantSlug) {
-      return next(); // No restaurant context, skip check
+    // Get restaurant ID from token
+    const restaurantId = req.user?.userId;
+    if (!restaurantId || role !== 'RESTAURANT_ADMIN') {
+      return next(); // No restaurant context or not restaurant admin, skip check
     }
 
-    // Find restaurant by slug
-    const restaurant = await Restaurant.findOne({ slug: restaurantSlug });
+    // Find restaurant by ID
+    const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
