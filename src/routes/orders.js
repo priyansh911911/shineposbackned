@@ -1,6 +1,6 @@
 const express = require("express");
 const { body, param } = require("express-validator");
-const { activityLogger } = require('../middleware/activityLogger');
+const { activityLogger } = require("../middleware/activityLogger");
 const {
   getOrders,
   createOrder,
@@ -12,23 +12,16 @@ const checkSubscription = require("../middleware/checkSubscription");
 const TenantModelFactory = require("../models/TenantModelFactory");
 
 const router = express.Router();
-
-
 //CREATE ORDER (STAFF)
-
 router.post(
   "/add/staff",
   auth(["RESTAURANT_ADMIN", "MANAGER", "CHEF", "WAITER", "CASHIER"]),
   checkSubscription,
-  activityLogger('Order'),
+  activityLogger("Order"),
   [
-    body("items")
-      .isArray({ min: 1 })
-      .withMessage("Items are required"),
+    body("items").isArray({ min: 1 }).withMessage("Items are required"),
 
-    body("items.*.menuId")
-      .notEmpty()
-      .withMessage("Menu ID is required"),
+    body("items.*.menuId").notEmpty().withMessage("Menu ID is required"),
 
     body("items.*.quantity")
       .isInt({ min: 1 })
@@ -44,12 +37,9 @@ router.post(
       .isMobilePhone()
       .withMessage("Invalid phone number"),
 
-    body("tableId")
-      .optional()
-      .isMongoId()
-      .withMessage("Invalid table ID"),
+    body("tableId").optional().isMongoId().withMessage("Invalid table ID"),
   ],
-  createOrder
+  createOrder,
 );
 
 /* =====================================================
@@ -57,24 +47,22 @@ router.post(
 ===================================================== */
 router.use(
   auth(["RESTAURANT_ADMIN", "MANAGER", "CHEF", "WAITER", "CASHIER"]),
-  checkSubscription
+  checkSubscription,
 );
 
 /* =====================================================
    GET ALL ORDERS
 ===================================================== */
-router.get("/all/orders", activityLogger('Order'), getOrders);
+router.get("/all/orders", activityLogger("Order"), getOrders);
 
 /* =====================================================
    UPDATE ORDER STATUS
 ===================================================== */
 router.patch(
   "/update/status/:id",
-  activityLogger('Order'),
+  activityLogger("Order"),
   [
-    param("id")
-      .isMongoId()
-      .withMessage("Invalid order ID"),
+    param("id").isMongoId().withMessage("Invalid order ID"),
 
     body("status")
       .isIn([
@@ -88,25 +76,23 @@ router.patch(
       ])
       .withMessage("Invalid order status"),
   ],
-  updateOrderStatus
+  updateOrderStatus,
 );
 
-/* =====================================================
+/*=====================================================
    UPDATE ORDER PRIORITY
-===================================================== */
+======================================================*/
 router.patch(
   "/update/priority/:id",
-  activityLogger('Order'),
+  activityLogger("Order"),
   [
-    param("id")
-      .isMongoId()
-      .withMessage("Invalid order ID"),
+    param("id").isMongoId().withMessage("Invalid order ID"),
 
     body("priority")
       .isIn(["LOW", "NORMAL", "HIGH", "URGENT"])
       .withMessage("Invalid priority"),
   ],
-  updateOrderPriority
+  updateOrderPriority,
 );
 
 module.exports = router;
