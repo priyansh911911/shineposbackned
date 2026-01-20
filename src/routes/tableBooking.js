@@ -10,7 +10,7 @@ const {
   updateBookingStatus,
   orderFromTable,
   getMenuForTable,
-} = require("../controllers/tableBookingController");
+} = require("../controllers/ReservationsTableController");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
