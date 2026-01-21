@@ -104,6 +104,29 @@ const createOrderSchema = () => new mongoose.Schema({
     }],
     itemTotal: Number
   }],
+  // extraItems
+  extraItems: [{
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    total: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  }],
   totalAmount: {
     type: Number,
     required: true
