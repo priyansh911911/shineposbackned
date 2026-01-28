@@ -2,6 +2,7 @@ const TenantModelFactory = require('../models/TenantModelFactory');
 
 const handleZomatoWebhook = async (req, res) => {
   try {
+    const { resId } = req.params;
     const { restaurantSlug, items } = req.body;
 
     if (!restaurantSlug || !items) {
