@@ -35,6 +35,8 @@ const activityLogRoutes = require('./routes/activityLog');
 const kotRoutes = require('./routes/kot');
 const tableRoutes = require('./routes/table');
 const uploadRoutes = require('./routes/upload');
+const zomatoSyncRoutes = require('./routes/zomatoSync');
+const zomatoWebhookRoutes = require('./routes/zomatoWebhook');
 const systemController = require('./controllers/systemController');
 const { trackApiMetrics } = systemController;
 
@@ -88,6 +90,8 @@ app.use('/api/activity', activityLogRoutes);
 app.use('/api/kot', kotRoutes);
 app.use('/api/table', tableRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/zomato', zomatoSyncRoutes);
+app.use('/api', zomatoWebhookRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/:restaurantSlug/orders', orderRoutes);
 
@@ -114,7 +118,7 @@ app.use('*', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

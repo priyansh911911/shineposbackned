@@ -618,7 +618,7 @@ class TenantModelFactory {
         imageUrl: { type: String, trim: true },
         videoUrl: { type: String, trim: true },
         timeToPrepare: { type: Number, required: true, min: 1 },
-        foodType: { type: String, enum: ['veg', 'nonveg'], required: true },
+        foodType: { type: String, enum: ['veg', 'nonveg', 'egg'], required: true },
         variation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'variations' }],
         addon: [{ type: mongoose.Schema.Types.ObjectId, ref: 'addons' }]
       }, { 
@@ -658,7 +658,20 @@ class TenantModelFactory {
     const modelKey = `${restaurantSlug}_variations`;
     if (!this.models.has(modelKey)) {
       const connection = this.getTenantConnection(restaurantSlug);
-      this.models.set(modelKey, connection.model('variations', createVariationSchema()));
+      const variationSchema = new mongoose.Schema({
+        variantId: { type: String, unique: true, sparse: true },
+        catalogueId: String,
+        name: { type: String, required: true, trim: true },
+        price: { type: Number, required: true },
+        basePrice: Number,
+        historyPrice: Number,
+        maxAllowedPrice: Number,
+        available: { type: Boolean, default: true },
+        inStock: { type: Boolean, default: true },
+        vendorEntityId: String,
+        lastSyncedAt: Date
+      }, { timestamps: true, strict: false });
+      this.models.set(modelKey, connection.model('variations', variationSchema));
     }
     return this.models.get(modelKey);
   }
