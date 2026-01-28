@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const TenantModelFactory = require('../models/TenantModelFactory');
 
 const createTable = async (req, res) => {
@@ -99,7 +100,27 @@ const updateTableStatus = async (req, res) => {
         table.status = status;
         const savedTable = await table.save();
         
-        res.json({ message: 'Table status updated successfully', table: savedTable });
+        let responseData = { message: 'Table status updated successfully', table: savedTable };
+        
+        // Check if table marked as MAINTENANCE is part of merged group
+        if (status === 'MAINTENANCE') {
+            const mergedTable = await Table.findOne({ 
+                mergedWith: id,
+                tableNumber: /^MG_T\d+$/,
+                status: { $ne: 'MAINTENANCE' }
+            });
+            
+            if (mergedTable) {
+                responseData.mergedGroupAlert = {
+                    message: 'Table is part of merged group - replacement needed',
+                    mergedTableId: mergedTable._id,
+                    mergedTableNumber: mergedTable.tableNumber,
+                    requiresReplacement: true
+                };
+            }
+        }
+        
+        res.json(responseData);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update table status' });
     }
@@ -265,6 +286,176 @@ const mergeTables = async (req, res) => {
     }
 };
 
+const getReplacementOptions = async (req, res) => {
+    try {
+        const { brokenTableId } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(brokenTableId)) {
+            return res.status(400).json({ error: 'Invalid brokenTableId format' });
+        }
+        
+        const Table = TenantModelFactory.getTableModel(req.user.restaurantSlug);
+        
+        const brokenTable = await Table.findById(brokenTableId);
+        if (!brokenTable) {
+            return res.status(404).json({ error: 'Broken table not found' });
+        }
+        
+        const mergedTable = await Table.findOne({ 
+            mergedWith: brokenTableId,
+            tableNumber: /^MG_T\d+$/,
+            status: { $ne: 'MAINTENANCE' }
+        });
+        
+        if (!mergedTable) {
+            return res.status(400).json({ error: 'Table is not part of any active merged group' });
+        }
+        
+        const replacementOptions = await Table.find({
+            status: 'AVAILABLE',
+            isActive: true,
+            capacity: { $gte: Math.floor(brokenTable.capacity * 0.8) },
+            _id: { $nin: mergedTable.mergedWith },
+            tableNumber: { $not: /^MG_T\d+$/ }
+        }).sort({ capacity: 1 }).limit(5);
+        
+        if (replacementOptions.length === 0) {
+            return res.status(400).json({ error: 'No suitable replacement tables available' });
+        }
+        
+        res.json({
+            brokenTable: { id: brokenTable._id, number: brokenTable.tableNumber, capacity: brokenTable.capacity },
+            mergedTable: { id: mergedTable._id, number: mergedTable.tableNumber },
+            replacementOptions: replacementOptions.map(table => ({
+                id: table._id,
+                number: table.tableNumber,
+                capacity: table.capacity,
+                location: table.location
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get replacement options' });
+    }
+};
+
+const transferAndMerge = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+        const { brokenTableId, replacementTableId } = req.body;
+        
+        if (!brokenTableId || !replacementTableId) {
+            return res.status(400).json({ error: 'brokenTableId and replacementTableId are required' });
+        }
+        
+        if (!mongoose.Types.ObjectId.isValid(brokenTableId) || !mongoose.Types.ObjectId.isValid(replacementTableId)) {
+            return res.status(400).json({ error: 'Invalid table ID format' });
+        }
+        
+        const Table = TenantModelFactory.getTableModel(req.user.restaurantSlug);
+        const Order = TenantModelFactory.getOrderModel(req.user.restaurantSlug);
+        const KOT = TenantModelFactory.getKOTModel(req.user.restaurantSlug);
+        
+        const brokenTable = await Table.findById(brokenTableId).session(session);
+        if (!brokenTable) {
+            await session.abortTransaction();
+            return res.status(404).json({ error: 'Broken table not found' });
+        }
+        
+        const mergedTable = await Table.findOne({ 
+            mergedWith: brokenTableId,
+            tableNumber: /^MG_T\d+$/,
+            status: { $ne: 'MAINTENANCE' }
+        }).session(session);
+        
+        if (!mergedTable) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: 'Table is not part of any active merged group' });
+        }
+        
+        const replacementTable = await Table.findById(replacementTableId).session(session);
+        if (!replacementTable || replacementTable.status !== 'AVAILABLE') {
+            await session.abortTransaction();
+            return res.status(400).json({ error: 'Invalid replacement table' });
+        }
+        
+        const newMergedWith = mergedTable.mergedWith.map(id => 
+            id.toString() === brokenTableId ? replacementTable._id : id
+        );
+        
+        const newTables = await Table.find({ _id: { $in: newMergedWith } }).session(session);
+        const newTotalCapacity = newTables.reduce((sum, t) => sum + t.capacity, 0);
+        
+        const newMergedTableNumber = `MG_T${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+        
+        const newMergedTable = new Table({
+            tableNumber: newMergedTableNumber,
+            capacity: newTotalCapacity,
+            location: mergedTable.location,
+            status: 'OCCUPIED',
+            mergedWith: newMergedWith,
+            mergedGuestCount: mergedTable.mergedGuestCount
+        });
+        const savedNewMergedTable = await newMergedTable.save({ session });
+        
+        const activeOrders = await Order.find({
+            tableId: mergedTable._id,
+            status: { $nin: ['COMPLETE', 'CANCELLED'] }
+        }).session(session);
+        
+        await Order.updateMany(
+            { _id: { $in: activeOrders.map(o => o._id) } },
+            { tableId: savedNewMergedTable._id, tableNumber: savedNewMergedTable.tableNumber },
+            { session }
+        );
+        
+        await KOT.updateMany(
+            { 
+                $or: [
+                    { orderId: { $in: activeOrders.map(o => o._id) } },
+                    { tableId: mergedTable._id }
+                ]
+            },
+            { 
+                tableId: savedNewMergedTable._id,
+                tableNumber: savedNewMergedTable.tableNumber 
+            },
+            { session }
+        );
+        
+        await Table.updateMany(
+            { _id: { $in: [brokenTableId, mergedTable._id] } },
+            { status: 'MAINTENANCE' },
+            { session }
+        );
+        
+        const tableIdsToUpdate = newMergedWith.filter(id => id.toString() !== replacementTable._id.toString());
+        await Table.updateMany(
+            { _id: { $in: [...tableIdsToUpdate, replacementTableId] } },
+            { status: 'OCCUPIED' },
+            { session }
+        );
+        
+        await session.commitTransaction();
+        
+        res.json({
+            message: 'Merged table maintenance completed successfully',
+            brokenTable: { id: brokenTableId, number: brokenTable.tableNumber },
+            replacementTable: { id: replacementTable._id, number: replacementTable.tableNumber },
+            oldMergedTable: { id: mergedTable._id, number: mergedTable.tableNumber },
+            newMergedTable: { id: savedNewMergedTable._id, number: savedNewMergedTable.tableNumber },
+            ordersTransferred: activeOrders.length
+        });
+        
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(500).json({ error: 'Failed to handle merged table maintenance' });
+    } finally {
+        session.endSession();
+    }
+};
+
 module.exports = {
     createTable,
     getTables,
@@ -274,7 +465,9 @@ module.exports = {
     deleteTable,
     getAvailableTables,
     transferTable,
-    mergeTables
+    mergeTables,
+    getReplacementOptions,
+    transferAndMerge
 };
 
 

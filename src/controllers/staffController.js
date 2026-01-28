@@ -3,7 +3,7 @@ const TenantModelFactory = require('../models/TenantModelFactory');
 
 const createStaff = async (req, res) => {
   try {
-    const { email, password, name, role, permissions, phone, hourlyRate } = req.body;
+    const { email, password, name, role, permissions, phone, hourlyRate, overtimeRate } = req.body;
     const restaurantSlug = req.user.restaurantSlug;
     
     if (!restaurantSlug) {
@@ -27,7 +27,8 @@ const createStaff = async (req, res) => {
       role,
       permissions: permissions || [],
       phone,
-      hourlyRate: hourlyRate || 0
+      hourlyRate: hourlyRate || 0,
+      overtimeRate: overtimeRate || 0
     });
 
     await staff.save();
