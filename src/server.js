@@ -39,7 +39,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const digitalMenuRoutes = require('./routes/digitalMenu');
 const zomatoSyncRoutes = require('./routes/zomatoSync');
 const dynoOrderRoutes = require('./routes/dynoOrder');
-const webhookRoutes = require('./routes/webhooks');
 const systemController = require('./controllers/systemController');
 const { trackApiMetrics } = systemController;
 
@@ -96,7 +95,6 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/zomato', zomatoSyncRoutes);
 app.use('/api/dyno', dynoOrderRoutes);
-app.use('/api/webhooks', webhookRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/:restaurantSlug/orders', orderRoutes);
 
