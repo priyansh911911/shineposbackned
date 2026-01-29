@@ -982,7 +982,11 @@ const getOrder = async (req, res) => {
 ===================================================== */
 const getOrderHistoryWebhook = async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
+    const { restaurant_id } = req.body;
+    
+    if (!restaurant_id) {
+      return res.status(400).json({ error: "restaurant_id is required" });
+    }
     
     // Find restaurant by ID
     const restaurant = await Restaurant.findById(restaurant_id);
@@ -1023,8 +1027,11 @@ const getOrderHistoryWebhook = async (req, res) => {
 ===================================================== */
 const updateItemStatusWebhook = async (req, res) => {
   try {
-    const { restaurant_id } = req.params;
-    const { orderId, itemIndex, status } = req.body;
+    const { restaurant_id, orderId, itemIndex, status } = req.body;
+    
+    if (!restaurant_id) {
+      return res.status(400).json({ error: "restaurant_id is required" });
+    }
     
     const allowedStatuses = ["PENDING", "PREPARING", "READY", "SERVED"];
     if (!allowedStatuses.includes(status)) {
