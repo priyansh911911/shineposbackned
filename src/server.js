@@ -94,7 +94,6 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/zomato', zomatoSyncRoutes);
 app.use('/api/dyno', dynoOrderRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/orders', orderRoutes.webhookRouter);
 app.use('/api/:restaurantSlug/orders', orderRoutes);
 
 // Root route
