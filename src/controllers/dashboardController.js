@@ -37,8 +37,9 @@ const getDashboardStats = async (req, res) => {
     // Calculate stats
     const revenue = filteredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const avgOrderValue = filteredOrders.length > 0 ? revenue / filteredOrders.length : 0;
-    const pendingOrders = allOrders.filter(o => o.status === 'PENDING').length;
-    const completedOrders = allOrders.filter(o => o.status === 'PAID' || o.status === 'COMPLETE').length;
+    const pendingOrders = allOrders.filter(o => o.status === 'PENDING' || o.status === 'ORDER_ACCEPTED').length;
+    const preparingOrders = allOrders.filter(o => o.status === 'PREPARING' || o.status === 'READY' || o.status === 'SERVED').length;
+    const completedOrders = allOrders.filter(o => o.status === 'COMPLETE').length;
 
     // Recent orders (last 10)
     const recentOrders = allOrders
@@ -64,6 +65,7 @@ const getDashboardStats = async (req, res) => {
         totalMenuItems: menuItems,
         activeStaff: staff,
         pendingOrders,
+        preparingOrders,
         completedOrders,
         customerSatisfaction: 4.8
       },
