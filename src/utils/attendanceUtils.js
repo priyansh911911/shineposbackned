@@ -6,8 +6,12 @@ class AttendanceUtils {
   }
 
   static getCurrentDate() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use IST timezone for consistent date calculation
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istTime = new Date(now.getTime() + istOffset);
+    
+    const today = new Date(istTime.getFullYear(), istTime.getMonth(), istTime.getDate());
     return today;
   }
 
