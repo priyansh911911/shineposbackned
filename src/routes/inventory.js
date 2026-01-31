@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.get(
   "/all/inventory/items",
-  auth(["RESTAURANT_ADMIN", "STAFF"]),
+  auth(["RESTAURANT_ADMIN", "MANAGER", "CHEF"]),
   tenantMiddleware,
   activityLogger("Inventory"),
   getInventory
@@ -24,7 +24,7 @@ router.get(
 
 router.get(
   "/all/low-stock",
-  auth(["RESTAURANT_ADMIN", "STAFF"]),
+  auth(["RESTAURANT_ADMIN", "MANAGER", "CHEF"]),
   tenantMiddleware,
   activityLogger("Inventory"),
   getLowStockItems
@@ -64,7 +64,7 @@ router.put(
 
 router.patch(
   "/update/restock/:id",
-  auth(["RESTAURANT_ADMIN", "STAFF"]),
+  auth(["RESTAURANT_ADMIN", "MANAGER"]),
   tenantMiddleware,
   activityLogger("Inventory"),
   [body("quantity").isNumeric().withMessage("Quantity must be a number")],
