@@ -199,7 +199,7 @@ const createOrder = async (req, res) => {
     const orderItems = [];
 
     for (const item of items) {
-      const { menuId, quantity, variation, addons } = item;
+      const { menuId, quantity, variation, addons, timeToPrepare } = item;
 
       if (!menuId || !quantity) {
         return res.status(400).json({ error: "Invalid item data" });
@@ -272,7 +272,8 @@ const createOrder = async (req, res) => {
         variation: finalVariation,
         addons: finalAddons,
         itemTotal,
-        status: "PENDING", // Default status for new items
+        status: "PENDING",
+        timeToPrepare: timeToPrepare || menuItem.timeToPrepare || 15
       });
     }
 
@@ -287,7 +288,6 @@ const createOrder = async (req, res) => {
 
     // Calculate discount if provided
     const { discount } = req.body;
-    console.log('Discount from request body:', discount);
     
     let subtotal = totalAmount;
     let discountAmount = 0;
@@ -296,7 +296,6 @@ const createOrder = async (req, res) => {
     if (discount && discount.percentage > 0) {
       discountAmount = (subtotal * discount.percentage) / 100;
       afterDiscount = subtotal - discountAmount;
-      console.log('Discount calculated:', { percentage: discount.percentage, amount: discountAmount, afterDiscount });
     }
 
     // Check if GST module is enabled
@@ -317,31 +316,19 @@ const createOrder = async (req, res) => {
     let tableNumber = null;
     let mergedTables = [];
     if (tableId) {
-      console.log('Table ID provided:', tableId);
-      console.log('Restaurant slug:', restaurantSlug);
       const TableModel = TenantModelFactory.getTableModel(restaurantSlug);
       
       const table = await TableModel.findById(tableId);
-      console.log('Found table:', table);
       
       if (table) {
         tableNumber = table.tableNumber;
         
-        // If it's a merged table, store the original table IDs
         if (table.mergedWith && table.mergedWith.length > 0) {
           mergedTables = table.mergedWith;
-          console.log('Merged tables stored:', mergedTables);
         }
         
-        console.log('Updating table status to OCCUPIED for table:', tableNumber);
-        
-        // Update table status to occupied
         table.status = "OCCUPIED";
         await table.save();
-        
-        console.log('Table status updated to:', table.status);
-      } else {
-        console.log('Table not found with ID:', tableId);
       }
     }
 
@@ -368,23 +355,12 @@ const createOrder = async (req, res) => {
       };
     }
 
-    console.log('OrderData before creating model:', JSON.stringify(orderData, null, 2));
-
     const order = new OrderModel(orderData);
-
-    console.log('Order object before save:', JSON.stringify(order, null, 2));
-    console.log('Order.discount field:', order.discount);
-    console.log('Order.subtotal field:', order.subtotal);
-
     const savedOrder = await order.save();
-    console.log('Order saved successfully:', savedOrder.orderNumber, 'Status:', savedOrder.status);
-    console.log('Saved order discount:', savedOrder.discount);
-    console.log('Saved order subtotal:', savedOrder.subtotal);
 
     // Auto-create KOT when order is created
     try {
       const KOTModel = TenantModelFactory.getKOTModel(restaurantSlug);
-      console.log('Creating KOT for order:', savedOrder.orderNumber);
       
       const kot = new KOTModel({
         orderId: savedOrder._id,
@@ -395,13 +371,14 @@ const createOrder = async (req, res) => {
           quantity: item.quantity,
           variation: item.variation,
           addons: item.addons,
-          status: "PENDING" // Default status for KOT items
+          status: "PENDING",
+          timeToPrepare: item.timeToPrepare || savedOrder.items.find(i => i.menuId.toString() === item.menuId.toString())?.timeToPrepare || 15
         })),
-        customerName: savedOrder.customerName
+        customerName: savedOrder.customerName,
+        tableNumber: savedOrder.tableNumber
       });
       
-      const savedKOT = await kot.save();
-      console.log('KOT created successfully:', savedKOT.kotNumber);
+      await kot.save();
     } catch (kotError) {
       console.error('KOT creation error:', kotError);
     }

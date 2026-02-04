@@ -45,12 +45,17 @@ const KOTSchema = new mongoose.Schema({
       type: String,
       enum: ['PENDING', 'PREPARING', 'READY', 'SERVED'],
       default: 'PENDING'
+    },
+    timeToPrepare: {
+      type: Number,
+      default: 15,
+      min: 1
     }
   }],
   
   status: {
     type: String,
-    enum: ['PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'],
+    enum: ['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED', 'PAID'],
     default: 'PENDING'
   },
   
@@ -62,6 +67,39 @@ const KOTSchema = new mongoose.Schema({
   
   tableNumber: String,
   customerName: String,
+  
+  extraItems: [{
+    menuId: {
+      type: mongoose.Schema.Types.ObjectId
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    variation: {
+      name: String,
+      price: Number
+    },
+    addons: [{
+      name: String,
+      price: Number
+    }],
+    status: {
+      type: String,
+      enum: ['PENDING', 'PREPARING', 'READY', 'SERVED'],
+      default: 'PENDING'
+    },
+    timeToPrepare: {
+      type: Number,
+      default: 15,
+      min: 1
+    }
+  }],
   
   printedAt: Date,
   startedAt: Date,

@@ -20,6 +20,9 @@ router.get('/:id', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF']), kotController.
 // Update KOT status
 router.patch('/:id/status', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF', 'WAITER']), kotController.updateKOTStatus);
 
+// Update individual item status in KOT
+router.patch('/:id/item/:itemIndex/status', auth(['RESTAURANT_ADMIN', 'MANAGER', 'CHEF']), kotController.updateKOTItemStatus);
+
 // Update KOT priority
 router.patch('/:id/priority', auth, kotController.updateKOTPriority);
 

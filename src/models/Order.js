@@ -77,6 +77,13 @@ const OrderSchema = new mongoose.Schema(
           enum: ["PENDING", "PREPARING", "READY", "SERVED"],
           default: "PENDING",
         },
+
+        // TIME TO PREPARE
+        timeToPrepare: {
+          type: Number,
+          default: 15,
+          min: 1
+        },
       },
     ],
     

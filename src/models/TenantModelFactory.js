@@ -567,6 +567,11 @@ const createKOTSchema = () => {
         type: String,
         enum: ['PENDING', 'PREPARING', 'READY', 'SERVED'],
         default: 'PENDING'
+      },
+      timeToPrepare: {
+        type: Number,
+        default: 15,
+        min: 1
       }
     }],
     extraItems: [{
@@ -595,6 +600,11 @@ const createKOTSchema = () => {
         type: String,
         enum: ['PENDING', 'PREPARING', 'READY', 'SERVED'],
         default: 'PENDING'
+      },
+      timeToPrepare: {
+        type: Number,
+        default: 15,
+        min: 1
       }
     }],
     status: {

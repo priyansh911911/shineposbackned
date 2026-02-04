@@ -273,6 +273,33 @@ const deleteKOT = async (req, res) => {
   }
 };
 
+// Update individual item status in KOT
+const updateKOTItemStatus = async (req, res) => {
+  try {
+    const { id, itemIndex } = req.params;
+    const { status } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const KOTModel = TenantModelFactory.getKOTModel(restaurantSlug);
+    
+    const kot = await KOTModel.findById(id);
+    if (!kot) {
+      return res.status(404).json({ error: 'KOT not found' });
+    }
+    
+    if (!kot.items[itemIndex]) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    
+    kot.items[itemIndex].status = status;
+    await kot.save();
+
+    res.json({ message: 'Item status updated successfully', kot });
+  } catch (error) {
+    console.error('Update KOT item status error:', error);
+    res.status(500).json({ error: 'Failed to update item status' });
+  }
+};
+
 module.exports = {
   createKOT,
   getKOTs,
@@ -281,5 +308,6 @@ module.exports = {
   updateKOTPriority,
   printKOT,
   getKitchenDashboard,
-  deleteKOT
+  deleteKOT,
+  updateKOTItemStatus
 };
