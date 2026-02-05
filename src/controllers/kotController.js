@@ -291,6 +291,10 @@ const updateKOTItemStatus = async (req, res) => {
     }
     
     kot.items[itemIndex].status = status;
+    if (status === 'PREPARING' && !kot.items[itemIndex].startedAt) {
+      kot.items[itemIndex].startedAt = new Date();
+    }
+    kot.markModified('items');
     await kot.save();
 
     res.json({ message: 'Item status updated successfully', kot });

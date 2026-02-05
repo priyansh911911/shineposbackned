@@ -572,7 +572,8 @@ const createKOTSchema = () => {
         type: Number,
         default: 15,
         min: 1
-      }
+      },
+      startedAt: Date
     }],
     extraItems: [{
       menuId: {
@@ -605,7 +606,8 @@ const createKOTSchema = () => {
         type: Number,
         default: 15,
         min: 1
-      }
+      },
+      startedAt: Date
     }],
     status: {
       type: String,
