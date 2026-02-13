@@ -793,7 +793,8 @@ class TenantModelFactory {
         timeToPrepare: { type: Number, required: true, min: 1 },
         foodType: { type: String, enum: ['veg', 'nonveg', 'egg'], required: true },
         variation: [{ type: mongoose.Schema.Types.ObjectId, ref: 'variations' }],
-        addon: [{ type: mongoose.Schema.Types.ObjectId, ref: 'addons' }]
+        addon: [{ type: mongoose.Schema.Types.ObjectId, ref: 'addons' }],
+        marginCostPercentage: { type: Number, default: 40, min: 0, max: 100 }
       }, { 
         timestamps: true,
         toJSON: { virtuals: true },

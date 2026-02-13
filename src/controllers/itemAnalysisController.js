@@ -8,8 +8,6 @@ exports.getItemAnalysis = async (req, res) => {
     
     const Order = TenantModelFactory.getOrderModel(restaurantSlug);
     const Menu = TenantModelFactory.getMenuItemModel(restaurantSlug);
-    const restaurant = await Restaurant.findOne({ slug: restaurantSlug }).select('marginCostPercentage');
-    const marginCost = (restaurant?.marginCostPercentage || 40) / 100;
     
     // Build date filter
     let dateFilter = {};
@@ -46,11 +44,14 @@ exports.getItemAnalysis = async (req, res) => {
     // Fetch orders with date filter
     const orders = await Order.find(dateFilter);
     
-    // Fetch all menu items with populated category to get category names
+    // Fetch all menu items with category and margin
     const menuItems = await Menu.find().populate('categoryID', 'name');
     const menuMap = {};
     menuItems.forEach(item => {
-      menuMap[item.itemName] = item.categoryID?.name || 'Uncategorized';
+      menuMap[item.itemName] = {
+        category: item.categoryID?.name || 'Uncategorized',
+        marginCost: (item.marginCostPercentage || 40) / 100
+      };
     });
     
     // Aggregate item data
@@ -59,10 +60,13 @@ exports.getItemAnalysis = async (req, res) => {
     orders.forEach(order => {
       order.items?.forEach(item => {
         const itemName = item.name;
+        const menuInfo = menuMap[itemName] || { category: 'Uncategorized', marginCost: 0.4 };
+        
         if (!itemMap[itemName]) {
           itemMap[itemName] = {
             name: itemName,
-            category: menuMap[itemName] || 'Uncategorized',
+            category: menuInfo.category,
+            marginCostPercentage: Math.round(menuInfo.marginCost * 100),
             quantity: 0,
             revenue: 0,
             cost: 0,
@@ -72,7 +76,7 @@ exports.getItemAnalysis = async (req, res) => {
         }
         
         const itemTotal = item.itemTotal || (item.quantity * (item.price || item.basePrice || 0));
-        const itemCost = itemTotal * marginCost;
+        const itemCost = itemTotal * menuInfo.marginCost;
         
         itemMap[itemName].quantity += item.quantity;
         itemMap[itemName].revenue += itemTotal;
@@ -83,10 +87,13 @@ exports.getItemAnalysis = async (req, res) => {
       // Include extra items
       order.extraItems?.forEach(item => {
         const itemName = item.name;
+        const menuInfo = menuMap[itemName] || { category: 'Extra Items', marginCost: 0.4 };
+        
         if (!itemMap[itemName]) {
           itemMap[itemName] = {
             name: itemName,
-            category: 'Extra Items',
+            category: menuInfo.category,
+            marginCostPercentage: Math.round(menuInfo.marginCost * 100),
             quantity: 0,
             revenue: 0,
             cost: 0,
@@ -96,7 +103,7 @@ exports.getItemAnalysis = async (req, res) => {
         }
         
         const itemTotal = item.total || (item.quantity * item.price);
-        const itemCost = itemTotal * marginCost;
+        const itemCost = itemTotal * menuInfo.marginCost;
         
         itemMap[itemName].quantity += item.quantity;
         itemMap[itemName].revenue += itemTotal;
@@ -108,7 +115,7 @@ exports.getItemAnalysis = async (req, res) => {
     // Calculate margins and convert to array
     const items = Object.values(itemMap).map(item => ({
       ...item,
-      margin: Math.round(marginCost * 100) // Show cost percentage, not profit margin
+      margin: item.marginCostPercentage
     }));
     
     res.json({
@@ -116,8 +123,7 @@ exports.getItemAnalysis = async (req, res) => {
       items,
       totalItems: items.length,
       totalRevenue: items.reduce((sum, item) => sum + item.revenue, 0),
-      totalProfit: items.reduce((sum, item) => sum + item.profit, 0),
-      marginCostPercentage: restaurant?.marginCostPercentage || 40
+      totalProfit: items.reduce((sum, item) => sum + item.profit, 0)
     });
     
   } catch (error) {
