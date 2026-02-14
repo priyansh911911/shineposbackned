@@ -50,6 +50,12 @@ const MenuItemSchema = new mongoose.Schema({
         enum: ['veg', 'nonveg', 'egg'],
         required: true
     },
+    marginCostPercentage: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 40
+    },
     
     // Zomato tags
     tags: [String],

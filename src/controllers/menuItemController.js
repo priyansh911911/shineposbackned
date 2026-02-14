@@ -38,7 +38,6 @@ const getMenuItems = async (req, res) => {
             .populate('categoryID', 'name')
             .populate('addon', 'name price')
             .populate('variation', 'name price')
-            .select('itemName categoryID price status imageUrl timeToPrepare foodType addon variation')
             .lean()
             .sort({ createdAt: -1 });
         res.json({ menuItems });
@@ -58,6 +57,7 @@ const getMenuItemById = async (req, res) => {
             .populate('addon', 'name price')
             .populate('variation', 'name price')
             .lean();
+        
         if (!menuItem) {
             return res.status(404).json({ error: 'Menu item not found' });
         }
@@ -74,13 +74,28 @@ const updateMenuItem = async (req, res) => {
         const { id } = req.params;
         const MenuItem = req.tenantModels.MenuItem;
         
-        const menuItem = await MenuItem.findById(id);
+        const updateData = {
+            itemName: req.body.itemName,
+            categoryID: req.body.categoryID,
+            status: req.body.status,
+            imageUrl: req.body.imageUrl,
+            videoUrl: req.body.videoUrl,
+            timeToPrepare: req.body.timeToPrepare,
+            foodType: req.body.foodType,
+            addon: req.body.addon,
+            variation: req.body.variation,
+            marginCostPercentage: req.body.marginCostPercentage
+        };
+        
+        const menuItem = await MenuItem.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        );
+        
         if (!menuItem) {
             return res.status(404).json({ error: 'Menu item not found' });
         }
-        
-        Object.assign(menuItem, req.body);
-        await menuItem.save();
         
         await menuItem.populate('categoryID');
         await menuItem.populate('addon');
