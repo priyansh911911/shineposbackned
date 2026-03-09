@@ -25,7 +25,20 @@ const staffSchema = new mongoose.Schema({
     enum: ['orders', 'menus', 'inventory', 'staff', 'reports', 'kitchen']
   }],
   phone: String,
+  salaryType: {
+    type: String,
+    enum: ['fixed', 'hourly', 'daily'],
+    default: 'fixed'
+  },
+  salaryAmount: {
+    type: Number,
+    default: 0
+  },
   hourlyRate: {
+    type: Number,
+    default: 0
+  },
+  dayRate: {
     type: Number,
     default: 0
   },
@@ -57,6 +70,19 @@ const staffSchema = new mongoose.Schema({
     averageOrderTime: { type: Number, default: 0 },
     customerRating: { type: Number, default: 0 }
   },
+  overtimeRequests: [{
+    date: Date,
+    hours: Number,
+    reason: String,
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'declined'],
+      default: 'pending'
+    },
+    assignedBy: mongoose.Schema.Types.ObjectId,
+    respondedAt: Date,
+    createdAt: { type: Date, default: Date.now }
+  }],
 
 }, {
   timestamps: true

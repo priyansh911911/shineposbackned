@@ -136,8 +136,115 @@ const getSalesData = async (req, res) => {
   }
 };
 
+const setExpectedRevenue = async (req, res) => {
+  try {
+    const { month, year, expectedAmount, notes } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const ExpectedRevenueModel = TenantModelFactory.getModel(restaurantSlug, 'ExpectedRevenue', require('../models/ExpectedRevenue'));
+    
+    let expectedRevenue = await ExpectedRevenueModel.findOne({ month, year });
+    
+    if (expectedRevenue) {
+      expectedRevenue.expectedAmount = expectedAmount;
+      if (notes) expectedRevenue.notes = notes;
+      await expectedRevenue.save();
+    } else {
+      expectedRevenue = new ExpectedRevenueModel({ month, year, expectedAmount, notes });
+      await expectedRevenue.save();
+    }
+    
+    res.json({ message: 'Expected revenue set successfully', expectedRevenue });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to set expected revenue' });
+  }
+};
+
+const getExpectedRevenue = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const restaurantSlug = req.user.restaurantSlug;
+    const ExpectedRevenueModel = TenantModelFactory.getModel(restaurantSlug, 'ExpectedRevenue', require('../models/ExpectedRevenue'));
+    const OrderModel = TenantModelFactory.getOrderModel(restaurantSlug);
+    
+    const currentMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const currentYear = year ? parseInt(year) : new Date().getFullYear();
+    
+    const expectedRevenue = await ExpectedRevenueModel.findOne({ month: currentMonth, year: currentYear });
+    
+    const startDate = new Date(currentYear, currentMonth - 1, 1);
+    const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+    
+    const orders = await OrderModel.find({
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $in: ['COMPLETE', 'PAID', 'SERVED', 'READY'] }
+    });
+    
+    const actualAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    if (expectedRevenue) {
+      expectedRevenue.actualAmount = actualAmount;
+      await expectedRevenue.save();
+    }
+    
+    const response = {
+      month: currentMonth,
+      year: currentYear,
+      expectedAmount: expectedRevenue?.expectedAmount || 0,
+      actualAmount,
+      difference: actualAmount - (expectedRevenue?.expectedAmount || 0),
+      percentage: expectedRevenue?.expectedAmount ? ((actualAmount / expectedRevenue.expectedAmount) * 100).toFixed(2) : 0,
+      notes: expectedRevenue?.notes || ''
+    };
+    
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get expected revenue' });
+  }
+};
+
+const getRevenueComparison = async (req, res) => {
+  try {
+    const restaurantSlug = req.user.restaurantSlug;
+    const ExpectedRevenueModel = TenantModelFactory.getModel(restaurantSlug, 'ExpectedRevenue', require('../models/ExpectedRevenue'));
+    const OrderModel = TenantModelFactory.getOrderModel(restaurantSlug);
+    
+    const currentYear = new Date().getFullYear();
+    const expectedRevenues = await ExpectedRevenueModel.find({ year: currentYear }).sort({ month: 1 });
+    
+    const comparison = [];
+    
+    for (const expected of expectedRevenues) {
+      const startDate = new Date(expected.year, expected.month - 1, 1);
+      const endDate = new Date(expected.year, expected.month, 0, 23, 59, 59);
+      
+      const orders = await OrderModel.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        status: { $in: ['COMPLETE', 'PAID', 'SERVED', 'READY'] }
+      });
+      
+      const actualAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+      
+      comparison.push({
+        month: expected.month,
+        year: expected.year,
+        expectedAmount: expected.expectedAmount,
+        actualAmount,
+        difference: actualAmount - expected.expectedAmount,
+        percentage: ((actualAmount / expected.expectedAmount) * 100).toFixed(2)
+      });
+    }
+    
+    res.json({ comparison });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get revenue comparison' });
+  }
+};
+
 module.exports = {
   getAdvancedAnalytics,
   exportReport,
-  getSalesData
+  getSalesData,
+  setExpectedRevenue,
+  getExpectedRevenue,
+  getRevenueComparison
 };

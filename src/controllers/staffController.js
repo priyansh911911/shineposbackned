@@ -3,7 +3,7 @@ const TenantModelFactory = require('../models/TenantModelFactory');
 
 const createStaff = async (req, res) => {
   try {
-    const { email, password, name, role, permissions, phone, hourlyRate, overtimeRate, shiftSchedule } = req.body;
+    const { email, password, name, role, permissions, phone, salaryType, salaryAmount, hourlyRate, dayRate, overtimeRate, shiftSchedule } = req.body;
     const restaurantSlug = req.user.restaurantSlug;
     
     
@@ -31,7 +31,10 @@ const createStaff = async (req, res) => {
       role,
       permissions: permissions || [],
       phone,
+      salaryType: salaryType || 'fixed',
+      salaryAmount: salaryAmount || 0,
       hourlyRate: hourlyRate || 0,
+      dayRate: dayRate || 0,
       overtimeRate: overtimeRate || 0,
       shiftSchedule: shiftSchedule || {
         shiftType: 'fixed',
@@ -146,6 +149,90 @@ const scheduleShift = async (req, res) => {
   }
 };
 
+const assignOvertime = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, hours, reason } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const currentUserId = req.user.userId || req.user.id;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+    
+    const staff = await StaffModel.findById(id);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    staff.overtimeRequests.push({
+      date,
+      hours,
+      reason,
+      status: 'pending',
+      assignedBy: currentUserId
+    });
+    await staff.save();
+
+    res.json({ message: 'Overtime assigned successfully', overtimeRequest: staff.overtimeRequests[staff.overtimeRequests.length - 1] });
+  } catch (error) {
+    console.error('Assign overtime error:', error);
+    res.status(500).json({ error: 'Failed to assign overtime' });
+  }
+};
+
+const respondToOvertime = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const currentUserId = req.user.userId || req.user.id;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+    
+    if (!['accepted', 'declined'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const staff = await StaffModel.findOne({ 'overtimeRequests._id': requestId });
+    if (!staff) {
+      return res.status(404).json({ error: 'Overtime request not found' });
+    }
+    
+    if (staff._id.toString() !== currentUserId) {
+      return res.status(403).json({ error: 'Can only respond to your own overtime requests' });
+    }
+    
+    const overtimeRequest = staff.overtimeRequests.id(requestId);
+    if (overtimeRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'Overtime request already responded' });
+    }
+    
+    overtimeRequest.status = status;
+    overtimeRequest.respondedAt = new Date();
+    await staff.save();
+
+    res.json({ message: `Overtime ${status} successfully`, overtimeRequest });
+  } catch (error) {
+    console.error('Respond to overtime error:', error);
+    res.status(500).json({ error: 'Failed to respond to overtime' });
+  }
+};
+
+const getMyOvertimeRequests = async (req, res) => {
+  try {
+    const restaurantSlug = req.user.restaurantSlug;
+    const currentUserId = req.user.userId || req.user.id;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+    
+    const staff = await StaffModel.findById(currentUserId);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    res.json({ overtimeRequests: staff.overtimeRequests || [] });
+  } catch (error) {
+    console.error('Get overtime requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch overtime requests' });
+  }
+};
+
 const updatePerformance = async (req, res) => {
   try {
     const { id } = req.params;
@@ -178,5 +265,8 @@ module.exports = {
   getStaff,
   updateStaff,
   scheduleShift,
-  updatePerformance
+  updatePerformance,
+  assignOvertime,
+  respondToOvertime,
+  getMyOvertimeRequests
 };

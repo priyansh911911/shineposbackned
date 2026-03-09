@@ -503,6 +503,56 @@ const updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
+    
+    // Map order status to item status
+    const statusMapping = {
+      "PENDING": "PENDING",
+      "ORDER_ACCEPTED": "PENDING",
+      "PREPARING": "PREPARING",
+      "READY": "READY",
+      "SERVED": "SERVED",
+      "COMPLETE": "SERVED",
+      "CANCELLED": "PENDING"
+    };
+    
+    const itemStatus = statusMapping[status];
+    
+    // Update all items status
+    if (itemStatus) {
+      order.items.forEach(item => {
+        item.status = itemStatus;
+        if (itemStatus === 'PREPARING' && !item.startedAt) {
+          item.startedAt = new Date();
+        }
+        if (itemStatus === 'READY' && !item.readyAt) {
+          if (!item.startedAt) item.startedAt = new Date(Date.now() - 60000);
+          item.readyAt = new Date();
+          const seconds = Math.round((item.readyAt - item.startedAt) / 1000);
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          item.actualPrepTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+      });
+      
+      // Update extra items status
+      if (order.extraItems && order.extraItems.length > 0) {
+        order.extraItems.forEach(item => {
+          item.status = itemStatus;
+          if (itemStatus === 'PREPARING' && !item.startedAt) {
+            item.startedAt = new Date();
+          }
+          if (itemStatus === 'READY' && !item.readyAt) {
+            if (!item.startedAt) item.startedAt = new Date(Date.now() - 60000);
+            item.readyAt = new Date();
+            const seconds = Math.round((item.readyAt - item.startedAt) / 1000);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            item.actualPrepTime = `${mins}:${secs.toString().padStart(2, '0')}`;
+          }
+        });
+      }
+    }
+    
     const savedOrder = await order.save();
 
     // Update table status when order is completed or cancelled
@@ -530,12 +580,36 @@ const updateOrderStatus = async (req, res) => {
       }
     }
 
-    // Update associated KOT status
+    // Update associated KOT status and items
     try {
       const KOTModel = TenantModelFactory.getKOTModel(req.user.restaurantSlug);
       const kots = await KOTModel.find({ orderId: id });
       for (const kot of kots) {
         kot.status = status;
+        
+        // Update KOT items status
+        if (itemStatus) {
+          kot.items.forEach((item, index) => {
+            item.status = itemStatus;
+            if (order.items[index]) {
+              item.startedAt = order.items[index].startedAt;
+              item.readyAt = order.items[index].readyAt;
+              item.actualPrepTime = order.items[index].actualPrepTime;
+            }
+          });
+          
+          if (kot.extraItems && kot.extraItems.length > 0) {
+            kot.extraItems.forEach((item, index) => {
+              item.status = itemStatus;
+              if (order.extraItems && order.extraItems[index]) {
+                item.startedAt = order.extraItems[index].startedAt;
+                item.readyAt = order.extraItems[index].readyAt;
+                item.actualPrepTime = order.extraItems[index].actualPrepTime;
+              }
+            });
+          }
+        }
+        
         await kot.save();
       }
     } catch (kotError) {

@@ -64,15 +64,23 @@ const checkIn = async (req, res) => {
       attendance.location = location;
     }
     
-    attendance.status = AttendanceUtils.determineStatus(
+    const statusResult = AttendanceUtils.determineStatus(
       checkInTime, 
       null, 
       scheduledShift?.scheduledStart,
       staff.workingHours?.standardHours || 8
     );
     
+    attendance.status = statusResult.status;
+    attendance.lateMinutes = statusResult.lateMinutes;
+    
     await attendance.save();
-    res.json({ message: 'Checked in successfully', checkInTime, status: attendance.status });
+    res.json({ 
+      message: 'Checked in successfully', 
+      checkInTime, 
+      status: attendance.status,
+      lateMinutes: attendance.lateMinutes
+    });
   } catch (error) {
     console.error('Check-in error:', error);
     res.status(500).json({ error: 'Check-in failed', details: error.message });
@@ -113,12 +121,15 @@ const checkOut = async (req, res) => {
     attendance.workingHours = AttendanceUtils.calculateWorkingHours(attendance.checkIn, checkOutTime);
     
     const scheduledShift = AttendanceUtils.getScheduledShift(staff, today);
-    attendance.status = AttendanceUtils.determineStatus(
+    const statusResult = AttendanceUtils.determineStatus(
       attendance.checkIn, 
       checkOutTime, 
       scheduledShift?.scheduledStart,
       staff?.workingHours?.standardHours || 8
     );
+    
+    attendance.status = statusResult.status;
+    attendance.lateMinutes = statusResult.lateMinutes;
     
     await attendance.save();
     res.json({ 
