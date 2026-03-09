@@ -6,7 +6,10 @@ const {
   getStaff, 
   updateStaff, 
   scheduleShift, 
-  updatePerformance 
+  updatePerformance,
+  assignOvertime,
+  respondToOvertime,
+  getMyOvertimeRequests
 } = require('../controllers/staffController');
 const auth = require('../middleware/auth');
 const checkSubscription = require('../middleware/checkSubscription');
@@ -29,5 +32,8 @@ router.post('/add/:id/shifts', auth(['RESTAURANT_ADMIN', 'MANAGER']), checkSubsc
   body('endTime').notEmpty().withMessage('End time is required')
 ], scheduleShift);
 router.patch('/update/performance/:id', auth(['RESTAURANT_ADMIN', 'MANAGER']), checkSubscription, tenantMiddleware, activityLogger('Performance'), updatePerformance);
+router.post('/assign-overtime/:id', auth(['RESTAURANT_ADMIN', 'MANAGER']), checkSubscription, tenantMiddleware, activityLogger('Overtime'), assignOvertime);
+router.patch('/overtime/:requestId/respond', auth(['MANAGER', 'CHEF', 'WAITER', 'CASHIER']), checkSubscription, tenantMiddleware, respondToOvertime);
+router.get('/my-overtime', auth(['MANAGER', 'CHEF', 'WAITER', 'CASHIER']), checkSubscription, tenantMiddleware, getMyOvertimeRequests);
 
 module.exports = router;

@@ -22,18 +22,23 @@ class AttendanceUtils {
     return Math.round(hours * 100) / 100;
   }
 
-  static determineStatus(checkIn, checkOut, scheduledStart, standardHours = 8) {
+  static determineStatus(checkIn, checkOut, scheduledStart, standardHours = 8, lateThresholdMinutes = 15) {
     // Manual status override takes precedence (handled in controller)
     
     // No check-in = absent
-    if (!checkIn) return 'absent';
+    if (!checkIn) return { status: 'absent', lateMinutes: 0 };
     
-    // Check if late (more than 15 min after scheduled start)
+    // Check if late (default: more than 15 min after scheduled start)
     let isLate = false;
+    let lateMinutes = 0;
     if (scheduledStart) {
-      const lateThreshold = new Date(scheduledStart.getTime() + 15 * 60 * 1000);
-      if (new Date(checkIn) > lateThreshold) {
+      const checkInTime = new Date(checkIn);
+      const scheduledTime = new Date(scheduledStart);
+      const diffMinutes = Math.floor((checkInTime - scheduledTime) / (1000 * 60));
+      
+      if (diffMinutes > lateThresholdMinutes) {
         isLate = true;
+        lateMinutes = diffMinutes;
       }
     }
     
@@ -43,21 +48,21 @@ class AttendanceUtils {
       
       // Less than half standard hours = half-day (regardless of late)
       if (workingHours < standardHours / 2) {
-        return 'half-day';
+        return { status: 'half-day', lateMinutes };
       }
       
       // Worked sufficient hours but was late
       if (isLate) {
-        return 'late';
+        return { status: 'late', lateMinutes };
       }
       
       // Worked sufficient hours and on time
-      return 'present';
+      return { status: 'present', lateMinutes: 0 };
     }
     
     // Only checked in (no checkout yet)
     // Return late if applicable, otherwise present
-    return isLate ? 'late' : 'present';
+    return { status: isLate ? 'late' : 'present', lateMinutes };
   }
 
   static getScheduledShift(staff, date) {
