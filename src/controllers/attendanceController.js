@@ -90,6 +90,7 @@ const checkIn = async (req, res) => {
 const checkOut = async (req, res) => {
   try {
     const { id } = req.params;
+    const { requestEarlyLeave } = req.body;
     const restaurantSlug = req.user.restaurantSlug;
     const currentUserId = req.user.userId || req.user.id;
     
@@ -117,26 +118,54 @@ const checkOut = async (req, res) => {
     }
     
     const checkOutTime = new Date();
+    const scheduledShift = AttendanceUtils.getScheduledShift(staff, today);
+    const standardHours = staff?.workingHours?.standardHours || 8;
+    
+    // Check early leave eligibility if staff was late
+    const earlyLeaveEligibility = AttendanceUtils.calculateEarlyLeaveEligibility(
+      attendance.lateMinutes, 
+      standardHours
+    );
+    
+    // Handle early leave request
+    if (requestEarlyLeave && earlyLeaveEligibility.isEligible) {
+      attendance.earlyLeave = {
+        isAllowed: true,
+        reason: earlyLeaveEligibility.reason,
+        approvedBy: currentUserId,
+        approvedAt: new Date()
+      };
+    }
+    
     attendance.checkOut = checkOutTime;
     attendance.workingHours = AttendanceUtils.calculateWorkingHours(attendance.checkIn, checkOutTime);
     
-    const scheduledShift = AttendanceUtils.getScheduledShift(staff, today);
     const statusResult = AttendanceUtils.determineStatus(
       attendance.checkIn, 
       checkOutTime, 
       scheduledShift?.scheduledStart,
-      staff?.workingHours?.standardHours || 8
+      standardHours
     );
     
     attendance.status = statusResult.status;
     attendance.lateMinutes = statusResult.lateMinutes;
     
     await attendance.save();
-    res.json({ 
+    
+    const response = { 
       message: 'Checked out successfully', 
       checkOutTime,
       workingHours: attendance.workingHours
-    });
+    };
+    
+    if (earlyLeaveEligibility.isEligible) {
+      response.earlyLeaveEligibility = earlyLeaveEligibility;
+      if (requestEarlyLeave) {
+        response.message += ' with early leave approved';
+      }
+    }
+    
+    res.json(response);
   } catch (error) {
     res.status(500).json({ error: 'Check-out failed' });
   }
@@ -428,6 +457,100 @@ const getStaffAttendanceByDate = async (req, res) => {
   }
 };
 
+const checkEarlyLeaveEligibility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const restaurantSlug = req.user.restaurantSlug;
+    const AttendanceModel = TenantModelFactory.getAttendanceModel(restaurantSlug);
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+    const today = AttendanceUtils.getCurrentDate();
+    
+    const attendance = await AttendanceModel.findOne({ staffId: id, date: today });
+    const staff = await StaffModel.findById(id);
+    
+    if (!attendance?.checkIn) {
+      return res.status(400).json({ error: 'Staff has not checked in today' });
+    }
+    
+    if (attendance.checkOut) {
+      return res.status(400).json({ error: 'Staff has already checked out' });
+    }
+    
+    const standardHours = staff?.workingHours?.standardHours || 8;
+    const earlyLeaveEligibility = AttendanceUtils.calculateEarlyLeaveEligibility(
+      attendance.lateMinutes, 
+      standardHours
+    );
+    
+    res.json({
+      staffName: staff.name,
+      checkInTime: attendance.checkIn,
+      lateMinutes: attendance.lateMinutes,
+      earlyLeaveEligibility,
+      currentEarlyLeave: attendance.earlyLeave
+    });
+  } catch (error) {
+    console.error('Check early leave eligibility error:', error);
+    res.status(500).json({ error: 'Failed to check early leave eligibility' });
+  }
+};
+
+const approveEarlyLeave = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const currentUserId = req.user.userId || req.user.id;
+    const AttendanceModel = TenantModelFactory.getAttendanceModel(restaurantSlug);
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+    const today = AttendanceUtils.getCurrentDate();
+    
+    if (!['RESTAURANT_ADMIN', 'MANAGER'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Only admins and managers can approve early leave' });
+    }
+    
+    const attendance = await AttendanceModel.findOne({ staffId: id, date: today });
+    const staff = await StaffModel.findById(id);
+    
+    if (!attendance?.checkIn) {
+      return res.status(400).json({ error: 'Staff has not checked in today' });
+    }
+    
+    if (attendance.checkOut) {
+      return res.status(400).json({ error: 'Staff has already checked out' });
+    }
+    
+    const standardHours = staff?.workingHours?.standardHours || 8;
+    const earlyLeaveEligibility = AttendanceUtils.calculateEarlyLeaveEligibility(
+      attendance.lateMinutes, 
+      standardHours
+    );
+    
+    if (!earlyLeaveEligibility.isEligible) {
+      return res.status(400).json({ error: 'Staff is not eligible for early leave' });
+    }
+    
+    attendance.earlyLeave = {
+      isAllowed: true,
+      reason: reason || earlyLeaveEligibility.reason,
+      approvedBy: currentUserId,
+      approvedAt: new Date()
+    };
+    
+    await attendance.save();
+    
+    res.json({
+      message: 'Early leave approved successfully',
+      staffName: staff.name,
+      earlyLeaveDetails: attendance.earlyLeave,
+      eligibility: earlyLeaveEligibility
+    });
+  } catch (error) {
+    console.error('Approve early leave error:', error);
+    res.status(500).json({ error: 'Failed to approve early leave' });
+  }
+};
+
 module.exports = {
   checkIn,
   checkOut,
@@ -435,5 +558,7 @@ module.exports = {
   getTodayAttendance,
   markAttendance,
   getAllAttendance,
-  getStaffAttendanceByDate
+  getStaffAttendanceByDate,
+  checkEarlyLeaveEligibility,
+  approveEarlyLeave
 };

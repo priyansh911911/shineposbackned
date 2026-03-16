@@ -688,6 +688,84 @@ const stopOvertimeTimer = async (req, res) => {
   }
 };
 
+const holdAdvanceSalary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const currentUserId = req.user.userId || req.user.id;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ error: 'Valid advance salary amount is required' });
+    }
+
+    const staff = await StaffModel.findById(id);
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    staff.advanceSalary = {
+      amount: Number(amount),
+      reason: reason || '',
+      isHeld: true,
+      heldAt: new Date(),
+      heldBy: currentUserId
+    };
+    await staff.save();
+
+    const { password: _, ...staffData } = staff.toObject();
+    res.json({ message: 'Advance salary held successfully', staff: staffData });
+  } catch (error) {
+    console.error('Hold advance salary error:', error);
+    res.status(500).json({ error: 'Failed to hold advance salary' });
+  }
+};
+
+const releaseAdvanceSalary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const restaurantSlug = req.user.restaurantSlug;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+
+    const staff = await StaffModel.findById(id);
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    staff.advanceSalary = { amount: 0, reason: '', isHeld: false };
+    await staff.save();
+
+    const { password: _, ...staffData } = staff.toObject();
+    res.json({ message: 'Advance salary released', staff: staffData });
+  } catch (error) {
+    console.error('Release advance salary error:', error);
+    res.status(500).json({ error: 'Failed to release advance salary' });
+  }
+};
+
+const setPFDeduction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { percentage, isEnabled } = req.body;
+    const restaurantSlug = req.user.restaurantSlug;
+    const StaffModel = TenantModelFactory.getStaffModel(restaurantSlug);
+
+    const pct = Number(percentage);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      return res.status(400).json({ error: 'PF percentage must be between 0 and 100' });
+    }
+
+    const staff = await StaffModel.findById(id);
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    staff.pfDeduction = { percentage: pct, isEnabled: Boolean(isEnabled) };
+    await staff.save();
+
+    const { password: _, ...staffData } = staff.toObject();
+    res.json({ message: 'PF deduction updated successfully', staff: staffData });
+  } catch (error) {
+    console.error('Set PF deduction error:', error);
+    res.status(500).json({ error: 'Failed to set PF deduction' });
+  }
+};
+
 module.exports = {
   createStaff,
   getStaff,
@@ -707,5 +785,8 @@ module.exports = {
   startOvertimeTimer,
   getOvertimeTimer,
   completeOvertimeManually,
-  stopOvertimeTimer
+  stopOvertimeTimer,
+  holdAdvanceSalary,
+  releaseAdvanceSalary,
+  setPFDeduction
 };
