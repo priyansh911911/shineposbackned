@@ -65,6 +65,21 @@ class AttendanceUtils {
     return { status: isLate ? 'late' : 'present', lateMinutes };
   }
 
+  static calculateEarlyLeaveEligibility(lateMinutes, standardHours = 8) {
+    // Allow early leave if staff was late by more than 15 minutes
+    if (lateMinutes > 15) {
+      const earlyLeaveMinutes = Math.min(lateMinutes, 60); // Max 1 hour early leave
+      const adjustedWorkingHours = standardHours - (earlyLeaveMinutes / 60);
+      return {
+        isEligible: true,
+        earlyLeaveMinutes,
+        adjustedWorkingHours,
+        reason: `Late by ${lateMinutes} minutes - eligible for ${earlyLeaveMinutes} minutes early leave`
+      };
+    }
+    return { isEligible: false };
+  }
+
   static getScheduledShift(staff, date) {
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[new Date(date).getDay()];
